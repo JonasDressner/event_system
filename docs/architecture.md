@@ -1,9 +1,9 @@
 # Architektur des Event-Systems
 
-Dieses Projekt besteht aus drei Schichten:
+Dieses Projekt enthält folgende Verzeichnisse:
 
 - `include/`
-  - Enthält die Header-Dateien für `Event`, `IPC`, `Producer` und `Consumer`.
+  - Enthält die Header-Dateien für `event`, `ipc`, `producer` und `consumer`.
 - `src/`
   - `main.cpp` startet die Anwendung und wählt den Modus `--producer` oder `--consumer`.
   - `producer.cpp` fährt Events hoch und schreibt sie über IPC in eine Pipe.

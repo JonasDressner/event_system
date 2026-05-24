@@ -49,7 +49,7 @@ private:
     std::mt19937 gen{std::random_device{}()};
     std::uniform_int_distribution<> severity_dist;
     std::uniform_int_distribution<> component_dist{0, 4};
-    std::uniform_int_distribution<> message_dist{1, 5};
+    std::uniform_int_distribution<> message_dist{0, 4};
 
     Event generateEvent() {
         Event evt;
