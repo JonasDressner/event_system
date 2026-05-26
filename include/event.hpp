@@ -54,9 +54,6 @@ struct Event {
         evt.severity = Severity::INFO;
         evt.message = "";
 
-        // Simple JSON parsing
-        size_t pos = 0;
-        
         // Extract component
         size_t start = data.find("\"component\":\"") + 13;
         size_t end = data.find("\"", start);

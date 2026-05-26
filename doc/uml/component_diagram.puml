@@ -1,0 +1,36 @@
+@startuml ComponentDiagram
+top to bottom direction
+skinparam componentStyle rectangle
+skinparam shadowing false
+
+' Komponenten
+component "event_system (main)" as Main
+component "Producer" as Producer
+component "Consumer" as Consumer
+component "IPC (abstraction)\nIPCWriter / IPCReader" as IPC
+component "Event Model\nserialize()/deserialize()" as EventModel
+component "Platform IPC Impl\nWindows: Named Pipes\nLinux: FIFO (/tmp/)" as IPCImpl
+
+' Enum / Typ
+component "Severity (enum)" as Severity
+
+' Beziehungen
+Main --> Producer : start/stop
+Main --> Consumer : start/stop
+
+Producer ..> EventModel : serialize() -> JSON/text
+Producer --> IPC : send(serialized event)
+
+Consumer --> IPC : read(serialized event)
+Consumer ..> EventModel : deserialize(serialized event)
+
+IPC ..> IPCImpl : delegates to (platform-specific)
+
+EventModel --> Severity : uses (attribute type)
+
+note right of EventModel
+  Gemeinsames Datenformat für Producer/Consumer.
+  Textbasierte Serialisierung (JSON-ähnlich).
+end note
+
+@enduml

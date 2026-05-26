@@ -1,0 +1,96 @@
+@startuml class_diagram
+
+left to right direction
+skinparam linetype ortho
+skinparam classAttributeIconSize 0
+
+skinparam shadowing false
+skinparam roundcorner 15
+
+skinparam class {
+    BackgroundColor white
+    BorderColor black
+    ArrowColor black
+}
+
+class Event {
+    - timestamp
+    - component
+    - severity : Severity
+    - message
+
+    --
+    + serialize()
+    + deserialize()
+}
+
+enum Severity {
+    INFO
+    WARNING
+    ERROR_LEVEL
+}
+
+class Producer {
+    - writer
+    - running
+    - components
+    - gen
+    - severity_dist
+    - component_dist
+    - message_dist
+
+    --
+    + start()
+    + stop()
+    + generateEvent()
+}
+
+class Consumer {
+    - reader
+    - running
+    - stats
+    - lastStatsTime
+
+    --
+    + start()
+    + stop()
+    + processEvent()
+    + updateStatistics()
+    + printStatistics()
+}
+
+class IPCWriter {
+    - pipeName
+    - pipe / fd
+
+    --
+    + write()
+}
+
+class IPCReader {
+    - pipeName
+    - pipe / fd
+
+    --
+    + read()
+}
+
+class "main.cpp" as Main {
+    + main()
+    + runProducer()
+    + runConsumer()
+}
+
+Severity : + severityToString()
+Severity : + stringToSeverity()
+
+Producer *-- IPCWriter
+Consumer *-- IPCReader
+
+Producer ..> Event
+Consumer ..> Event
+
+Main ..> Producer
+Main ..> Consumer
+
+@enduml

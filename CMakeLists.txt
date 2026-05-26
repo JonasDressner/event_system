@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.11)
 project(EventSystem)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -10,6 +10,8 @@ add_executable(event_system
     src/main.cpp
     src/producer.cpp
     src/consumer.cpp
+    src/ipc_factory.cpp
+    src/ipc_adapter.cpp
 )
 
 # Platform-specific settings
@@ -26,3 +28,33 @@ if(MSVC)
 else()
     add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
+
+include(FetchContent)
+include(CTest)
+enable_testing()
+
+FetchContent_Declare(
+  Catch2
+  GIT_REPOSITORY https://github.com/catchorg/Catch2.git
+  GIT_TAG v3.5.0
+)
+FetchContent_MakeAvailable(Catch2)
+
+include(Catch)
+
+add_executable(EventSystemTests
+    test/event_test.cpp
+    test/producer_test.cpp
+    test/consumer_test.cpp
+)
+
+target_link_libraries(EventSystemTests PRIVATE Catch2::Catch2WithMain)
+target_include_directories(EventSystemTests PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/test
+)
+
+catch_discover_tests(EventSystemTests
+    REPORT_ZERO_TESTS
+    TEST_PREFIX "Test/"
+)

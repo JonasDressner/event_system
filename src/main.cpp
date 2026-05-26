@@ -6,27 +6,29 @@
 void runProducer(const std::string& pipeName);
 void runConsumer(const std::string& pipeName);
 
-int main(int argc, char* argv[]) {
-    std::string mode;
-    std::string pipeName = "event_pipe";
+enum class Mode { Producer, Consumer, Invalid };
 
+Mode parseMode(const std::string& arg) {
+    if (arg == "--producer") return Mode::Producer;
+    if (arg == "--consumer") return Mode::Consumer;
+    return Mode::Invalid;
+}
+
+int main(int argc, char* argv[]) {
     if (argc < 2) {
-        std::cout << "Usage: event_system [--producer|--consumer] [pipe_name]" << std::endl;
+        std::cout << "Usage: event_system [--producer|--consumer] [pipe_name]\n";
         return 1;
     }
 
-    mode = argv[1];
-    if (argc >= 3) {
-        pipeName = argv[2];
-    }
+    Mode mode = parseMode(argv[1]);
+    std::string pipeName = (argc >= 3) ? argv[2] : "event_pipe";
 
-    if (mode == "--producer") {
+    if (mode == Mode::Producer) {
         runProducer(pipeName);
-    } else if (mode == "--consumer") {
+    } else if (mode == Mode::Consumer) {
         runConsumer(pipeName);
     } else {
-        std::cerr << "Unknown mode: " << mode << std::endl;
-        std::cerr << "Usage: event_system [--producer|--consumer] [pipe_name]" << std::endl;
+        std::cerr << "Unknown mode: " << argv[1] << "\n";
         return 1;
     }
 
