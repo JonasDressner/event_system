@@ -1,6 +1,8 @@
 #pragma once
 #include "iipc.hpp"
 #include "ievent_serializer.hpp"
+#include "event.hpp"
+#include "event_serializer.hpp"
 #include <vector>
 #include <string>
 
@@ -20,6 +22,10 @@ struct FakeReader : IIPCReader {
 };
 
 struct FakeSerializer : IEventSerializer {
-    std::string serialize(const Event& e) override { return e.serialize(); }
-    Event deserialize(const std::string& s) override { return Event::deserialize(s); }
+    std::string serialize(const Event& e) override { 
+        return EventSerializerUtils::toJson(e); 
+    }
+    Event deserialize(const std::string& s) override { 
+        return EventSerializerUtils::fromJson(s); 
+    }
 };

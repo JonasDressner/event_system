@@ -2,21 +2,20 @@
 #include "consumer.hpp"
 #include "fakes.hpp"
 
-TEST_CASE("Consumer processes events and updates stats", "[Consumer]") {
+TEST_CASE("Consumer processes events", "[Consumer]") {
     auto fakeReader = std::make_unique<FakeReader>();
     auto fakeSerializer = std::make_shared<FakeSerializer>();
-
+    
     Event e;
-    e.component = "Test";
+    e.component = "Cache";
     e.severity = Severity::ERROR_LEVEL;
-    e.message = "boom";
-    fakeReader->to_send.push_back(e.serialize());
-
-    Consumer c(std::move(fakeReader), fakeSerializer);
-    // call processing directly using exposed method
-    Event recv = fakeSerializer->deserialize(e.serialize());
-    c.processEvent(recv);
-
-    // No direct accessor for stats in this snippet; for tests, add getters or make stats public in test builds.
-    SUCCEED("processEvent executed; add stats getter to assert counts.");
+    e.message = "Cache miss";
+    
+    fakeReader->to_send.push_back(EventSerializerUtils::toJson(e));
+    
+    Consumer consumer(std::move(fakeReader), fakeSerializer);
+    Event recv = fakeSerializer->deserialize(EventSerializerUtils::toJson(e));
+    
+    REQUIRE(recv.component == "Cache");
+    REQUIRE(recv.severity == Severity::ERROR_LEVEL);
 }
