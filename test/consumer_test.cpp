@@ -8,7 +8,7 @@ TEST_CASE("Consumer processes events", "[Consumer]") {
     
     Event e;
     e.component = "Cache";
-    e.severity = Severity::ERROR_LEVEL;
+    e.severity = Severity::ERROR;
     e.message = "Cache miss";
     
     fakeReader->to_send.push_back(EventSerializerUtils::toJson(e));
@@ -17,5 +17,5 @@ TEST_CASE("Consumer processes events", "[Consumer]") {
     Event recv = fakeSerializer->deserialize(EventSerializerUtils::toJson(e));
     
     REQUIRE(recv.component == "Cache");
-    REQUIRE(recv.severity == Severity::ERROR_LEVEL);
+    REQUIRE(recv.severity == Severity::ERROR);
 }

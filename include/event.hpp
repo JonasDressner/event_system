@@ -6,7 +6,7 @@
 enum class Severity {
     INFO = 0,
     WARNING = 1,
-    ERROR_LEVEL = 2
+    ERROR = 2
 };
 
 std::string severityToString(Severity sev);

@@ -11,5 +11,5 @@ TEST_CASE("Producer generates events", "[Producer]") {
     
     REQUIRE(!evt.component.empty());
     REQUIRE(evt.severity >= Severity::INFO);
-    REQUIRE(evt.severity <= Severity::ERROR_LEVEL);
+    REQUIRE(evt.severity <= Severity::ERROR);
 }

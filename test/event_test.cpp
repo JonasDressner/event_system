@@ -21,16 +21,16 @@ TEST_CASE("Event deserialization", "[Event]") {
     Event parsed = EventSerializerUtils::fromJson(data);
     
     REQUIRE(parsed.component == "API");
-    REQUIRE(parsed.severity == Severity::ERROR_LEVEL);
+    REQUIRE(parsed.severity == Severity::ERROR);
     REQUIRE(parsed.message == "Internal server error");
 }
 
 TEST_CASE("Event severity conversion", "[Event]") {
     REQUIRE(severityToString(Severity::INFO) == "INFO");
     REQUIRE(severityToString(Severity::WARNING) == "WARNING");
-    REQUIRE(severityToString(Severity::ERROR_LEVEL) == "ERROR");
+    REQUIRE(severityToString(Severity::ERROR) == "ERROR");
     
     REQUIRE(stringToSeverity("INFO") == Severity::INFO);
     REQUIRE(stringToSeverity("WARNING") == Severity::WARNING);
-    REQUIRE(stringToSeverity("ERROR") == Severity::ERROR_LEVEL);
+    REQUIRE(stringToSeverity("ERROR") == Severity::ERROR);
 }

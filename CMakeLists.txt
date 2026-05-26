@@ -9,15 +9,15 @@ include_directories(${CMAKE_SOURCE_DIR}/include)
 add_library(EventSystemLib
     src/event.cpp
     src/event_serializer.cpp
-)
-
-add_executable(EventSystem
-    src/main.cpp
     src/producer.cpp
     src/consumer.cpp
     src/ipc_factory.cpp
     src/ipc.cpp
-    )
+)
+
+add_executable(EventSystem
+    src/main.cpp
+)
 
 target_link_libraries(EventSystem PRIVATE EventSystemLib)
 

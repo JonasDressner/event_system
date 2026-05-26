@@ -27,7 +27,7 @@ class Event {
 enum Severity {
     INFO
     WARNING
-    ERROR_LEVEL
+    ERROR
 }
 
 class Producer {
