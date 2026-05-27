@@ -2,6 +2,7 @@
 
 #include "event.hpp"
 #include "iipc.hpp"
+#include "iipc_factory.hpp"
 #include "ievent_serializer.hpp"
 #include "signal_helper.hpp"
 #include <memory>
@@ -15,7 +16,7 @@ public:
     Producer(std::unique_ptr<IIPCWriter> writer,
              std::shared_ptr<IEventSerializer> serializer);
 
-    explicit Producer(const std::string& pipeName);
+    Producer(const std::string& pipeName, IIPCFactory& factory);
 
     Event generateEvent();
     void start();

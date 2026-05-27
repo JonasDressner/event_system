@@ -1,35 +1,83 @@
-#include "producer.hpp"
-#include "consumer.hpp"
+#include "iipc_factory.hpp"
+#include "ipc_factory.hpp"
 #include <iostream>
 #include <string>
+#include <memory>
+#include <stdexcept>
 
-void runProducer(const std::string& pipeName);
-void runConsumer(const std::string& pipeName);
+void runProducer(const std::string& pipeName, IIPCFactory& factory);
+void runConsumer(const std::string& pipeName, IIPCFactory& factory);
 
-enum class Mode { Producer, Consumer, Invalid };
-
-Mode parseMode(const std::string& arg) {
-    if (arg == "--producer") return Mode::Producer;
-    if (arg == "--consumer") return Mode::Consumer;
-    return Mode::Invalid;
+// ---------------------------------------------------------------
+// Factory selection — add new transports here only
+// ---------------------------------------------------------------
+std::unique_ptr<IIPCFactory> createFactory(const std::string& transport) {
+    if (transport == "pipe") return std::make_unique<PipeIPCFactory>();
+    // future: if (transport == "tcp") return std::make_unique<TCPIPCFactory>();
+    // future: if (transport == "shm") return std::make_unique<SharedMemIPCFactory>();
+    throw std::invalid_argument("Unknown transport: '" + transport + "'. Available: pipe");
 }
 
+// ---------------------------------------------------------------
+// Argument parsing
+// ---------------------------------------------------------------
+enum class Mode { Producer, Consumer, Invalid };
+
+struct AppConfig {
+    Mode        mode      = Mode::Invalid;
+    std::string pipeName  = "event_pipe";
+    std::string transport = "pipe";
+};
+
+AppConfig parseArgs(int argc, char* argv[]) {
+    AppConfig cfg;
+
+    for (int i = 1; i < argc; ++i) {
+        std::string arg = argv[i];
+
+        if (arg == "--producer") {
+            cfg.mode = Mode::Producer;
+        } else if (arg == "--consumer") {
+            cfg.mode = Mode::Consumer;
+        } else if (arg == "--transport" && i + 1 < argc) {
+            cfg.transport = argv[++i];
+        } else if (arg.rfind("--", 0) != 0) {
+            cfg.pipeName = arg;   // positional: pipe name
+        }
+    }
+
+    return cfg;
+}
+
+// ---------------------------------------------------------------
+// Entry point
+// ---------------------------------------------------------------
 int main(int argc, char* argv[]) {
     if (argc < 2) {
-        std::cout << "Usage: event_system [--producer|--consumer] [pipe_name]\n";
+        std::cout << "Usage: EventSystem --producer|--consumer"
+                     " [--transport pipe] [pipe_name]\n";
         return 1;
     }
 
-    Mode mode = parseMode(argv[1]);
-    std::string pipeName = (argc >= 3) ? argv[2] : "event_pipe";
+    AppConfig cfg = parseArgs(argc, argv);
 
-    if (mode == Mode::Producer) {
-        runProducer(pipeName);
-    } else if (mode == Mode::Consumer) {
-        runConsumer(pipeName);
-    } else {
-        std::cerr << "Unknown mode: " << argv[1] << "\n";
+    if (cfg.mode == Mode::Invalid) {
+        std::cerr << "Error: specify --producer or --consumer\n";
         return 1;
+    }
+
+    std::unique_ptr<IIPCFactory> factory;
+    try {
+        factory = createFactory(cfg.transport);
+    } catch (const std::invalid_argument& e) {
+        std::cerr << "Error: " << e.what() << "\n";
+        return 1;
+    }
+
+    if (cfg.mode == Mode::Producer) {
+        runProducer(cfg.pipeName, *factory);
+    } else {
+        runConsumer(cfg.pipeName, *factory);
     }
 
     return 0;

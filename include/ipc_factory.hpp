@@ -1,8 +1,9 @@
 #pragma once
 
-#include "iipc.hpp"
-#include <memory>
-#include <string>
+#include "iipc_factory.hpp"
 
-std::unique_ptr<IIPCWriter> createIPCWriter(const std::string& pipeName);
-std::unique_ptr<IIPCReader> createIPCReader(const std::string& pipeName);
+class PipeIPCFactory : public IIPCFactory {
+public:
+    std::unique_ptr<IIPCWriter> createWriter(const std::string& name) override;
+    std::unique_ptr<IIPCReader> createReader(const std::string& name) override;
+};

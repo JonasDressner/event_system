@@ -1,6 +1,6 @@
 #include "consumer.hpp"
 #include "event_serializer.hpp"
-#include "ipc_factory.hpp"
+#include "iipc_factory.hpp"
 #include "signal_helper.hpp"
 #include <iostream>
 #include <iomanip>
@@ -18,8 +18,8 @@ Consumer::Consumer(std::unique_ptr<IIPCReader> reader,
     , lastStatsTime_(std::chrono::steady_clock::now())
 {}
 
-Consumer::Consumer(const std::string& pipeName)
-    : Consumer(createIPCReader(pipeName), std::make_shared<SimpleEventSerializer>())
+Consumer::Consumer(const std::string& pipeName, IIPCFactory& factory)
+    : Consumer(factory.createReader(pipeName), std::make_shared<SimpleEventSerializer>())
 {}
 
 // ---------- Consumer public methods ----------
@@ -108,14 +108,14 @@ void Consumer::printStatistics() {
 
 // ---------- free function ----------
 
-void runConsumer(const std::string& pipeName) {
+void runConsumer(const std::string& pipeName, IIPCFactory& factory) {
     try {
         std::cout << "========================================" << std::endl;
         std::cout << "Event System - Consumer" << std::endl;
         std::cout << "========================================" << std::endl;
         std::cout << std::endl;
 
-        Consumer consumer(pipeName);
+        Consumer consumer(pipeName, factory);
         installAppSignalHandler(&consumer);
         consumer.start();
     } catch (const std::exception& e) {

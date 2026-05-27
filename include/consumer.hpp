@@ -2,6 +2,7 @@
 
 #include "event.hpp"
 #include "iipc.hpp"
+#include "iipc_factory.hpp"
 #include "ievent_serializer.hpp"
 #include "signal_helper.hpp"
 #include <map>
@@ -22,7 +23,7 @@ public:
     Consumer(std::unique_ptr<IIPCReader> reader,
              std::shared_ptr<IEventSerializer> serializer);
 
-    explicit Consumer(const std::string& pipeName);
+    Consumer(const std::string& pipeName, IIPCFactory& factory);
 
     void start();
     void stop() noexcept override;

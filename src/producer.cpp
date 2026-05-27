@@ -1,11 +1,12 @@
 #include "producer.hpp"
 #include "event_serializer.hpp"
-#include "ipc_factory.hpp"
+#include "iipc_factory.hpp"
 #include "signal_helper.hpp"
 #include <iostream>
 #include <chrono>
 #include <thread>
 #include <csignal>
+
 
 // ---------- Producer constructors ----------
 
@@ -22,8 +23,8 @@ Producer::Producer(std::unique_ptr<IIPCWriter> writer,
     components_ = {"Database", "API", "Cache", "Auth", "Logging"};
 }
 
-Producer::Producer(const std::string& pipeName)
-    : Producer(createIPCWriter(pipeName), std::make_shared<SimpleEventSerializer>())
+Producer::Producer(const std::string& pipeName, IIPCFactory& factory)
+    : Producer(factory.createWriter(pipeName), std::make_shared<SimpleEventSerializer>())
 {}
 
 // ---------- Producer public methods ----------
@@ -74,14 +75,14 @@ void Producer::stop() noexcept {
 
 // ---------- free function ----------
 
-void runProducer(const std::string& pipeName) {
+void runProducer(const std::string& pipeName, IIPCFactory& factory) {
     try {
         std::cout << "========================================" << std::endl;
         std::cout << "Event System - Producer" << std::endl;
         std::cout << "========================================" << std::endl;
         std::cout << std::endl;
 
-        Producer producer(pipeName);
+        Producer producer(pipeName, factory);
         installAppSignalHandler(&producer);
         producer.start();
     } catch (const std::exception& e) {
