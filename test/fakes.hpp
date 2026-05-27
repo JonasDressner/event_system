@@ -14,13 +14,13 @@ struct FakeWriter : IIPCWriter {
 };
 
 struct FakeReader : IIPCReader {
-    std::vector<std::string> to_send;
+    std::vector<std::string> toSend;
 
     bool read(std::string& msg, int) override {
-        if (to_send.empty())
+        if (toSend.empty())
             return false;
-        msg = to_send.front();
-        to_send.erase(to_send.begin());
+        msg = toSend.front();
+        toSend.erase(toSend.begin());
         return true;
     }
 };

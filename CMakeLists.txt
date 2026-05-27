@@ -11,7 +11,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Enable with: cmake -DENABLE_CLANG_TIDY=ON ..
 option(ENABLE_CLANG_TIDY "Run clang-tidy on all sources during build" OFF)
 if(ENABLE_CLANG_TIDY)
-    find_program(CLANG_TIDY_EXE NAMES clang-tidy clang-tidy-17 clang-tidy-16)
+    find_program(CLANG_TIDY_EXE NAMES clang-tidy clang-tidy-22 clang-tidy-17 clang-tidy-16)
     if(CLANG_TIDY_EXE)
         message(STATUS "clang-tidy found: ${CLANG_TIDY_EXE}")
         set(CMAKE_CXX_CLANG_TIDY "${CLANG_TIDY_EXE}")
