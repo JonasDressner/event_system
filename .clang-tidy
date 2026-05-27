@@ -31,7 +31,7 @@ Checks: >
 # Set to true for CI strict mode.
 WarningsAsErrors: ''
 
-HeaderFilterRegex: 'include/.*\.hpp'
+HeaderFilterRegex: '.*\.hpp'
 
 CheckOptions:
   # ── Naming conventions ──────────────────────────────────────────────

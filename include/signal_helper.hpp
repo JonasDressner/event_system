@@ -9,7 +9,7 @@ struct IStopper {
     virtual void stop() noexcept = 0;
 };
 
-inline std::atomic<IStopper*> g_app_instance{nullptr};
+inline std::atomic<IStopper*> gAppInstance{nullptr};
 
 inline void appSignalHandler(int signal) {
     if (signal == SIGINT) {
@@ -17,14 +17,14 @@ inline void appSignalHandler(int signal) {
     } else if (signal == SIGTERM) {
         std::cout << "\nSIGTERM received. Stop application...\n";
     }
-    auto ptr = g_app_instance.load(std::memory_order_acquire);
+    auto* ptr = gAppInstance.load(std::memory_order_acquire);
     if (ptr) {
         ptr->stop();
     }
 }
 
 inline void installAppSignalHandler(IStopper* target) {
-    g_app_instance.store(target, std::memory_order_release);
+    gAppInstance.store(target, std::memory_order_release);
     std::signal(SIGINT, appSignalHandler);
     std::signal(SIGTERM, appSignalHandler);
 }

@@ -12,9 +12,9 @@
 #include <chrono>
 
 struct Statistics {
-    int warning_count = 0;
-    int error_count = 0;
-    std::map<std::string, std::map<std::string, int>> component_severity_count;
+    int warningCount = 0;
+    int errorCount = 0;
+    std::map<std::string, std::map<std::string, int>> componentSeverityCount;
 };
 
 class Consumer : public IStopper {
@@ -36,6 +36,6 @@ private:
     std::shared_ptr<IEventSerializer> serializer_;
     std::atomic<bool> running_;
     Statistics stats_;
-    mutable std::mutex stats_mutex_;
+    mutable std::mutex statsMutex_;
     std::chrono::steady_clock::time_point lastStatsTime_;
 };

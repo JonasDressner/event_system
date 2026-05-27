@@ -28,7 +28,7 @@ private:
 
     std::vector<std::string> components_;
     std::mt19937 gen_;
-    std::uniform_int_distribution<> severity_dist_;
-    std::uniform_int_distribution<> component_dist_;
-    std::uniform_int_distribution<> message_dist_;
+    std::uniform_int_distribution<> severityDist_;
+    std::uniform_int_distribution<> componentDist_;
+    std::uniform_int_distribution<> messageDist_;
 };

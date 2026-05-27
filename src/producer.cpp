@@ -15,9 +15,9 @@ Producer::Producer(std::unique_ptr<IIPCWriter> writer,
     , serializer_(std::move(serializer))
     , running_(true)
     , gen_(std::random_device{}())
-    , severity_dist_(0, 2)
-    , component_dist_(0, 4)
-    , message_dist_(0, 4)
+    , severityDist_(0, 2)
+    , componentDist_(0, 4)
+    , messageDist_(0, 4)
 {
     components_ = {"Database", "API", "Cache", "Auth", "Logging"};
 }
@@ -31,8 +31,8 @@ Producer::Producer(const std::string& pipeName, IIPCFactory& factory)
 Event Producer::generateEvent() {
     Event evt;
     evt.timestamp = std::chrono::system_clock::now();
-    evt.component = components_[component_dist_(gen_)];
-    evt.severity = static_cast<Severity>(severity_dist_(gen_));
+    evt.component = components_[componentDist_(gen_)];
+    evt.severity = static_cast<Severity>(severityDist_(gen_));
 
     const std::string messages[] = {
         "Operation completed successfully",
@@ -41,7 +41,7 @@ Event Producer::generateEvent() {
         "Connection timeout",
         "Critical system error"
     };
-    evt.message = messages[message_dist_(gen_)];
+    evt.message = messages[messageDist_(gen_)];
     return evt;
 }
 

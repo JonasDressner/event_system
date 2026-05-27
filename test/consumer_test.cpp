@@ -12,9 +12,9 @@ TEST_CASE("Consumer filters INFO events - no statistics update", "[Consumer]") {
     consumer.processEvent(evt);
 
     auto stats = consumer.getStatistics();
-    REQUIRE(stats.warning_count == 0);
-    REQUIRE(stats.error_count   == 0);
-    REQUIRE(stats.component_severity_count.empty());
+    REQUIRE(stats.warningCount == 0);
+    REQUIRE(stats.errorCount   == 0);
+    REQUIRE(stats.componentSeverityCount.empty());
 }
 
 TEST_CASE("Consumer counts WARNING events", "[Consumer]") {
@@ -28,9 +28,9 @@ TEST_CASE("Consumer counts WARNING events", "[Consumer]") {
     consumer.processEvent(evt);
 
     auto stats = consumer.getStatistics();
-    REQUIRE(stats.warning_count == 2);
-    REQUIRE(stats.error_count   == 0);
-    REQUIRE(stats.component_severity_count.at("Cache").at("WARNING") == 2);
+    REQUIRE(stats.warningCount == 2);
+    REQUIRE(stats.errorCount   == 0);
+    REQUIRE(stats.componentSeverityCount.at("Cache").at("WARNING") == 2);
 }
 
 TEST_CASE("Consumer counts ERROR events", "[Consumer]") {
@@ -43,9 +43,9 @@ TEST_CASE("Consumer counts ERROR events", "[Consumer]") {
     consumer.processEvent(evt);
 
     auto stats = consumer.getStatistics();
-    REQUIRE(stats.warning_count == 0);
-    REQUIRE(stats.error_count   == 1);
-    REQUIRE(stats.component_severity_count.at("Database").at("ERROR") == 1);
+    REQUIRE(stats.warningCount == 0);
+    REQUIRE(stats.errorCount   == 1);
+    REQUIRE(stats.componentSeverityCount.at("Database").at("ERROR") == 1);
 }
 
 TEST_CASE("Consumer tracks multiple components independently", "[Consumer]") {
@@ -66,10 +66,10 @@ TEST_CASE("Consumer tracks multiple components independently", "[Consumer]") {
     consumer.processEvent(warn);
 
     auto stats = consumer.getStatistics();
-    REQUIRE(stats.warning_count == 2);
-    REQUIRE(stats.error_count   == 1);
-    REQUIRE(stats.component_severity_count.at("Cache").at("WARNING")    == 2);
-    REQUIRE(stats.component_severity_count.at("Database").at("ERROR")   == 1);
-    REQUIRE(stats.component_severity_count.count("Cache")  == 1);
-    REQUIRE(stats.component_severity_count.count("Database") == 1);
+    REQUIRE(stats.warningCount == 2);
+    REQUIRE(stats.errorCount   == 1);
+    REQUIRE(stats.componentSeverityCount.at("Cache").at("WARNING")    == 2);
+    REQUIRE(stats.componentSeverityCount.at("Database").at("ERROR")   == 1);
+    REQUIRE(stats.componentSeverityCount.count("Cache")  == 1);
+    REQUIRE(stats.componentSeverityCount.count("Database") == 1);
 }

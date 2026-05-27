@@ -63,13 +63,13 @@ void Consumer::processEvent(const Event& evt) {
     }
 
     {
-        std::lock_guard<std::mutex> lock(stats_mutex_);
+        std::lock_guard<std::mutex> lock(statsMutex_);
         if (evt.severity == Severity::WARNING) {
-            stats_.warning_count++;
+            stats_.warningCount++;
         } else if (evt.severity == Severity::ERROR) {
-            stats_.error_count++;
+            stats_.errorCount++;
         }
-        stats_.component_severity_count[evt.component][severityToString(evt.severity)]++;
+        stats_.componentSeverityCount[evt.component][severityToString(evt.severity)]++;
     }
 
     std::cout << "[" << timestampToString(evt.timestamp) << "]"
@@ -79,7 +79,7 @@ void Consumer::processEvent(const Event& evt) {
 }
 
 Statistics Consumer::getStatistics() const {
-    std::lock_guard<std::mutex> lock(stats_mutex_);
+    std::lock_guard<std::mutex> lock(statsMutex_);
     return stats_;
 }
 
@@ -91,12 +91,12 @@ void Consumer::printStatistics() const {
     std::cout << "\n" << std::string(70, '=') << std::endl;
     std::cout << "EVENT STATISTICS" << std::endl;
     std::cout << std::string(70, '=') << std::endl;
-    std::cout << "Total WARNING events: " << statsCopy.warning_count << std::endl;
-    std::cout << "Total ERROR events:   " << statsCopy.error_count << std::endl;
+    std::cout << "Total WARNING events: " << statsCopy.warningCount << std::endl;
+    std::cout << "Total ERROR events:   " << statsCopy.errorCount << std::endl;
     std::cout << "\nBreakdown by Component:" << std::endl;
     std::cout << std::string(70, '-') << std::endl;
 
-    for (const auto& [component, severity_map] : statsCopy.component_severity_count) {
+    for (const auto& [component, severity_map] : statsCopy.componentSeverityCount) {
         std::cout << "  [" << component << "]" << std::endl;
         for (const auto& [severity, count] : severity_map) {
             std::cout << "    " << std::setw(10) << severity << ": " << count << std::endl;

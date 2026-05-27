@@ -18,9 +18,9 @@ public:
 private:
     std::string pipeName_;
 #ifdef _WIN32
-    HANDLE pipe_;
+    HANDLE pipe_{INVALID_HANDLE_VALUE};
 #else
-    int fd_;
+    int fd_{-1};
 #endif
 
     void createPipe();    // server role: create + wait for first client
@@ -37,9 +37,9 @@ public:
 private:
     std::string pipeName_;
 #ifdef _WIN32
-    HANDLE pipe_;
+    HANDLE pipe_{INVALID_HANDLE_VALUE};
 #else
-    int fd_;
+    int fd_{-1};
 #endif
 
     void connect();   // client role: retry-connect to producer's pipe

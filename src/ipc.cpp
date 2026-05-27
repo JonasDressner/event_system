@@ -38,11 +38,6 @@ static std::string getLastWin32Error() {
 
 IPCWriter::IPCWriter(const std::string& pipeName)
     : pipeName_(pipeName)
-#ifdef _WIN32
-    , pipe_(INVALID_HANDLE_VALUE)
-#else
-    , fd_(-1)
-#endif
 {
     createPipe();
 }
@@ -157,11 +152,6 @@ void IPCWriter::reconnect() {
 
 IPCReader::IPCReader(const std::string& pipeName)
     : pipeName_(pipeName)
-#ifdef _WIN32
-    , pipe_(INVALID_HANDLE_VALUE)
-#else
-    , fd_(-1)
-#endif
 {
     connect();
 }
