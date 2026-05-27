@@ -23,7 +23,7 @@ Producer::Producer(std::unique_ptr<IIPCWriter> writer,
 }
 
 Producer::Producer(const std::string& pipeName, IIPCFactory& factory)
-    : Producer(factory.createWriter(pipeName), std::make_shared<SimpleEventSerializer>())
+    : Producer(factory.createWriter(pipeName), std::make_shared<EventSerializer>())
 {}
 
 // ---------- Producer public methods ----------

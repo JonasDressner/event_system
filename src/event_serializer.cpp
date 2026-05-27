@@ -82,12 +82,12 @@ Event fromJson(const std::string& json) {
 
 }  // namespace EventSerializerUtils
 
-// ---------- SimpleEventSerializer ----------
+// ---------- EventSerializer ----------
 
-std::string SimpleEventSerializer::serialize(const Event& e) {
+std::string EventSerializer::serialize(const Event& e) {
     return EventSerializerUtils::toJson(e);
 }
 
-Event SimpleEventSerializer::deserialize(const std::string& s) {
+Event EventSerializer::deserialize(const std::string& s) {
     return EventSerializerUtils::fromJson(s);
 }

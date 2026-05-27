@@ -1,0 +1,357 @@
+\documentclass{beamer}
+
+% ── Theme ──────────────────────────────────────────────────────────────────
+\usetheme{Madrid}
+\usecolortheme{default}
+
+% ── Packages ───────────────────────────────────────────────────────────────
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[ngerman]{babel}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{tikz}
+
+% ── C++ Code-Style ─────────────────────────────────────────────────────────
+\lstdefinestyle{cpp}{
+    language=C++,
+    basicstyle=\ttfamily\footnotesize,
+    keywordstyle=\color{blue!80!black}\bfseries,
+    commentstyle=\color{gray}\itshape,
+    stringstyle=\color{red!70!black},
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{black!30},
+    backgroundcolor=\color{gray!5},
+    columns=fullflexible,
+    showstringspaces=false,
+    tabsize=2
+}
+\lstdefinestyle{plain}{
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{black!30},
+    backgroundcolor=\color{gray!5},
+    columns=fullflexible,
+    showstringspaces=false
+}
+
+% ── Titelseite ─────────────────────────────────────────────────────────────
+\title{Event System -- IPC Producer/Consumer}
+\subtitle{Bewerbungsaufgabe -- Embedded Systems Developer}
+\author{Jonas Dressner}
+\institute{Bewerbung bei SEW-EURODRIVE}
+\date{31.05.2026}
+
+% ══════════════════════════════════════════════════════════════════════════
+\begin{document}
+
+% ── Titelfolie ──────────────────────────────────────────────────────────
+\begin{frame}
+    \titlepage
+\end{frame}
+
+% ── Inhaltsverzeichnis ──────────────────────────────────────────────────
+\begin{frame}{Inhalt}
+    \tableofcontents
+\end{frame}
+
+% ════════════════════════════════════════════════════════════════════════
+\section{Aufgabenstellung}
+
+\begin{frame}{Aufgabenstellung}
+\begin{itemize}
+    \item Design einer \textbf{Producer-Consumer-Applikation} für Eventaustausch
+    \item Producer und Consumer laufen in \textbf{getrennten Prozessen}
+    \item \textbf{Kommunikationsschicht muss austauschbar sein} (modulares Design)
+    \item \textbf{IPC mit Systemfunktionen}: Windows oder Linux
+    \item Implementierung in \textbf{C++17}, kompilierbarer Source Code
+    \vspace{0.5em}
+    \item \textbf{Producer} generiert Events: Zeitstempel, Komponente, Severity, Nachricht
+    \item \textbf{Consumer} filtert ab \texttt{WARNING}, aggregiert und gibt Statistiken aus
+\end{itemize}
+\end{frame}
+
+% ════════════════════════════════════════════════════════════════════════
+\section{Architektur}
+
+\begin{frame}{Architekturübersicht}
+\begin{columns}[T]
+    \column{0.52\textwidth}
+    \textbf{Schichten (top $\to$ bottom)}
+    \begin{itemize}
+        \item \texttt{main.cpp} -- Entry Point, CLI-Parsing
+        \item \texttt{IIPCFactory} -- Abstract Factory
+        \item \texttt{Producer} / \texttt{Consumer} -- Business Logic
+        \item \texttt{IIPCWriter} / \texttt{IIPCReader} -- IPC-Abstraktion
+        \item \texttt{IPCWriter} / \texttt{IPCReader} -- Plattform-Impl.
+        \item \texttt{IEventSerializer} -- Serialisierungs-Abstraktion
+        \item \texttt{Event} / \texttt{Severity} -- Domain
+    \end{itemize}
+
+    \column{0.45\textwidth}
+    \textbf{Startsequenz}
+    \begin{enumerate}
+        \item \texttt{--producer} starten
+        \item Pipe anlegen (\textit{Server-Seite})
+        \item \texttt{--consumer} starten
+        \item Consumer verbindet sich
+        \item Eventaustausch läuft
+    \end{enumerate}
+    \vspace{0.5em}
+    \small Transport wählbar: \texttt{--transport pipe}\\
+    \small (zukünftig: \texttt{--transport tcp})
+\end{columns}
+\end{frame}
+
+% ── UML Klassendiagramm ─────────────────────────────────────────────────
+\begin{frame}{UML -- Klassendiagramm}
+\centering
+\includegraphics[width=0.95\textwidth]{class_diagram.png}
+\end{frame}
+
+% ── UML Komponentendiagramm ─────────────────────────────────────────────
+\begin{frame}{UML -- Komponentendiagramm}
+\centering
+\includegraphics[width=0.95\textwidth]{component_diagram.png}
+\end{frame}
+
+% ════════════════════════════════════════════════════════════════════════
+\section{Designentscheidungen}
+
+\begin{frame}{Designentscheidungen -- Interfaces \& Patterns}
+\begin{itemize}
+    \item \textbf{Abstract Factory Pattern}\\
+          \texttt{IIPCFactory} $\rightarrow$ \texttt{PipeIPCFactory}\\
+          Transport per \texttt{--transport pipe} wählbar -- neue Impl.\ ohne Änderung an Business Logic
+
+    \vspace{0.4em}
+    \item \textbf{Interface Segregation}\\
+          \texttt{IIPCWriter}, \texttt{IIPCReader}, \texttt{IIPCFactory}, \texttt{IEventSerializer}, \texttt{IStopper}\\
+          Klassen kennen nur die Schnittstellen, die sie tatsächlich brauchen
+
+    \vspace{0.4em}
+    \item \textbf{Dependency Injection (Konstruktor)}\\
+          Producer/Consumer erhalten \texttt{unique\_ptr<IIPCWriter/Reader>} via Konstruktor\\
+          $\Rightarrow$ in Unit-Tests einfach durch Mock ersetzbar
+
+    \vspace{0.4em}
+    \item \textbf{Producer = Named-Pipe-Server}\\
+          Producer legt die Pipe an und wartet auf Clients\\
+          $\Rightarrow$ natürlicher Startpunkt, Consumer kann jederzeit verbinden/trennen
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Designentscheidungen -- Robustheit}
+\begin{itemize}
+    \item \textbf{Typed Exception: \texttt{PipeDisconnectedException}}\\
+          Statt fragiler String-Vergleiche -- klare Fehlerklassifizierung per \texttt{catch}-Block
+
+    \vspace{0.4em}
+    \item \textbf{Reconnect-Logik im Producer}\\
+          \texttt{ERROR\_BROKEN\_PIPE} $\rightarrow$ \texttt{DisconnectNamedPipe} + \texttt{ConnectNamedPipe}\\
+          Producer läuft weiter; neuer Consumer kann sich jederzeit neu verbinden
+
+    \vspace{0.4em}
+    \item \textbf{Thread-Sicherheit}\\
+          \texttt{std::atomic<bool> running\_} für Stop-Flag (signal-safe)\\
+          \texttt{std::mutex stats\_mutex\_} schützt \texttt{Statistics}-Struktur
+
+    \vspace{0.4em}
+    \item \textbf{Signal-Handling via \texttt{IStopper}}\\
+          \texttt{SIGINT}/\texttt{SIGTERM} rufen \texttt{stop()} auf dem globalen Instanz-Pointer auf\\
+          $\Rightarrow$ sauberer Shutdown ohne \texttt{exit()} oder globale Flags
+
+    \vspace{0.4em}
+    \item \textbf{Timeout-Implementierung}\\
+          Windows: \texttt{PeekNamedPipe}-Loop mit \texttt{GetTickCount64}\\
+          Linux: \texttt{poll()} mit \texttt{struct pollfd}
+\end{itemize}
+\end{frame}
+
+% ── Sprachentscheidung ──────────────────────────────────────────────────
+\begin{frame}{Sprachentscheidung -- C++17 für Embedded}
+\begin{columns}[T]
+    \column{0.48\textwidth}
+    \textbf{Bewusste Wahl: C++17}
+    \begin{itemize}
+        \item Interfaces, RAII, Smart Pointer\\
+              $\rightarrow$ \textit{zero-overhead abstractions}
+        \item \texttt{constexpr}, \texttt{[[nodiscard]]}\\
+              $\rightarrow$ compile-time Prüfungen
+        \item \texttt{std::atomic<bool>}\\
+              $\rightarrow$ signal-sicheres Stop-Flag
+        \item Dependency Injection\\
+              $\rightarrow$ Komponenten testbar \& austauschbar
+    \end{itemize}
+
+    \column{0.48\textwidth}
+    \textbf{Übertragbarkeit auf Embedded}
+    \begin{itemize}
+        \item \textbf{Embedded Linux}: vollständig einsetzbar
+        \item \textbf{Bare-Metal / RTOS}:
+        \begin{itemize}
+            \item Heap $\rightarrow$ statische Allokation
+            \item Exceptions $\rightarrow$ Fehlercodes (\texttt{-fno-exceptions})
+            \item RTTI deaktiviert (\texttt{-fno-rtti})
+        \end{itemize}
+        \item \textbf{Architektur bleibt identisch}\\
+              Factory, Interface Segregation,\\
+              DI sind hardware-unabhängig
+    \end{itemize}
+\end{columns}
+\end{frame}
+
+% ════════════════════════════════════════════════════════════════════════
+\section{IPC Implementierung}
+
+\begin{frame}[fragile]{IPC -- Abstraktion \& Plattform}
+\begin{columns}[T]
+    \column{0.50\textwidth}
+    \textbf{Interface}
+\begin{lstlisting}[style=cpp]
+struct IIPCFactory {
+  virtual ~IIPCFactory() = default;
+  virtual unique_ptr<IIPCWriter>
+    createWriter(string name) = 0;
+  virtual unique_ptr<IIPCReader>
+    createReader(string name) = 0;
+};
+
+// main.cpp
+if (transport == "pipe")
+  return make_unique<PipeIPCFactory>();
+// transport == "tcp"  -- geplant
+\end{lstlisting}
+
+    \column{0.46\textwidth}
+    \textbf{Plattform-Implementierung}\\[0.3em]
+    \textit{Windows (Named Pipes):}
+    \begin{itemize}\small
+        \item \texttt{CreateNamedPipeA}
+        \item \texttt{ConnectNamedPipe}
+        \item \texttt{WriteFile} / \texttt{ReadFile}
+        \item \texttt{PeekNamedPipe} (Timeout)
+    \end{itemize}
+    \vspace{0.4em}
+    \textit{Linux (FIFOs):}
+    \begin{itemize}\small
+        \item \texttt{mkfifo}
+        \item \texttt{open(O\_WRONLY)}
+        \item \texttt{open(O\_RDONLY|O\_NONBLOCK)}
+        \item \texttt{poll()} (Timeout)
+    \end{itemize}
+\end{columns}
+\end{frame}
+
+% ════════════════════════════════════════════════════════════════════════
+\section{Event \& Serialisierung}
+
+\begin{frame}[fragile]{Event-Format \& JSON-Serialisierung}
+\begin{columns}[T]
+    \column{0.47\textwidth}
+    \textbf{Domain-Modell}
+\begin{lstlisting}[style=cpp]
+struct Event {
+  time_point timestamp;
+  string     component;
+  Severity   severity;
+  string     message;
+};
+
+enum class Severity {
+  INFO    = 0,
+  WARNING = 1,
+  ERROR   = 2
+};
+\end{lstlisting}
+
+    \column{0.50\textwidth}
+    \textbf{Wire-Format (JSON)}
+\begin{lstlisting}[style=plain]
+{
+  "timestamp":
+    "2026-05-27 14:23:01.042",
+  "component":  "SensorA",
+  "severity":   "WARNING",
+  "message":    "Threshold exceeded"
+}
+\end{lstlisting}
+    \vspace{0.3em}
+    \small \textbf{Kein externe Bibliothek} --\\
+    manuelle Serialisierung via\\
+    \texttt{EventSerializerUtils::toJson}\\
+    \texttt{EventSerializerUtils::fromJson}
+\end{columns}
+\end{frame}
+
+% ════════════════════════════════════════════════════════════════════════
+\section{Mögliche Erweiterungen}
+
+\begin{frame}{Erweiterung -- Logging-System}
+\begin{columns}[T]
+    \column{0.48\textwidth}
+    \textbf{Konzept: \texttt{ILogger}-Interface}
+    \begin{itemize}
+        \item Neue Schnittstelle analog zu \texttt{IEventSerializer}
+        \item Methode \texttt{log(Severity, string)}
+        \item Per Dependency Injection in Producer und Consumer injizierbar
+        \item Gleiche \texttt{Severity}-Enum wie Event-Domain
+    \end{itemize}
+
+    \column{0.48\textwidth}
+    \textbf{Implementierungen}
+    \begin{itemize}
+        \item \texttt{ConsoleLogger} -- Ausgabe auf \texttt{stdout}
+        \item \texttt{FileLogger} -- persistente Logdatei
+        \item \texttt{RotatingFileLogger} -- Log-Rotation nach Dateigröße
+        \item \texttt{NullLogger} -- kein Output (Tests)
+    \end{itemize}
+    \vspace{0.3em}
+    \small Austausch ohne Codeänderung an Business Logic -- selbes Muster wie Transport-Schicht
+\end{columns}
+\end{frame}
+
+\begin{frame}{Weitere mögliche Erweiterungen}
+\begin{columns}[T]
+    \column{0.48\textwidth}
+    \textbf{Neue Transportschichten}
+    \begin{itemize}
+        \item \textbf{TCP/IP} $\rightarrow$ \texttt{TCPIPCFactory}\\
+              1 Zeile in \texttt{createFactory()}
+        \item \textbf{Shared Memory}\\
+              \texttt{ShmIPCFactory}\\
+              Höchste Performance, lokal
+        \item \textbf{Message Queue}\\
+              POSIX MQ / Windows MSMQ\\
+              Puffer bei Consumer-Abwesenheit
+    \end{itemize}
+
+    \column{0.48\textwidth}
+    \textbf{Applikation}
+    \begin{itemize}
+        \item \textbf{Multi-Consumer}\\
+              Broadcast an mehrere Abnehmer
+        \item \textbf{Event-Filter konfigurierbar}\\
+              \texttt{--min-severity WARNING}
+        \item \textbf{Persistenz}\\
+              Event-Store / Datenbank
+        \item \textbf{Konfigurationsdatei}\\
+              YAML/JSON statt CLI-Argumente
+    \end{itemize}
+\end{columns}
+\end{frame}
+
+% ── Abschluss ────────────────────────────────────────────────────────────
+\begin{frame}
+    \centering
+    \vspace{2em}
+    {\Huge Vielen Dank!}\\[1.5em]
+    {\large Fragen?}\\[2em]
+    \small Source Code + Dokumentation: \texttt{event\_system/}
+\end{frame}
+
+\end{document}

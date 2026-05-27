@@ -2,7 +2,7 @@
 #include "consumer.hpp"
 #include "fakes.hpp"
 
-TEST_CASE("Consumer filters INFO events — no statistics update", "[Consumer]") {
+TEST_CASE("Consumer filters INFO events - no statistics update", "[Consumer]") {
     Consumer consumer(std::make_unique<FakeReader>(), std::make_shared<FakeSerializer>());
 
     Event evt;

@@ -1,96 +1,213 @@
 @startuml class_diagram
 
-left to right direction
-skinparam linetype ortho
+top to bottom direction
 skinparam classAttributeIconSize 0
-
 skinparam shadowing false
-skinparam roundcorner 15
+skinparam roundcorner 8
+skinparam packageStyle rectangle
 
 skinparam class {
     BackgroundColor white
-    BorderColor black
-    ArrowColor black
+    BorderColor #444444
+    ArrowColor #333333
 }
 
-class Event {
-    - timestamp
-    - component
-    - severity : Severity
-    - message
-
-    --
-    + serialize()
-    + deserialize()
+' Realisierung (implements) → blau
+skinparam ArrowColor<<realize>> #2980b9
+' Komposition / Aggregation → dunkelgrau
+skinparam ArrowColor<<compose>> #555555
+skinparam interface {
+    BackgroundColor #e8f4fb
+    BorderColor #2980b9
+}
+skinparam package {
+    BackgroundColor #fafafa
+    BorderColor #aaaaaa
+    FontStyle bold
 }
 
-enum Severity {
-    INFO
-    WARNING
-    ERROR
+skinparam nodesep 60
+skinparam ranksep 50
+skinparam enum {
+    BackgroundColor #fff8e1
+    BorderColor #f39c12
 }
 
-class Producer {
-    - writer
-    - running
-    - components
-    - gen
-    - severity_dist
-    - component_dist
-    - message_dist
+' ═══════════════════════════════════════════
+'  Entry Point
+' ═══════════════════════════════════════════
+package "Entry Point" {
+    class AppConfig <<struct>> {
+        + mode : Mode
+        + pipeName : string
+        + transport : string
+    }
 
-    --
-    + start()
-    + stop()
-    + generateEvent()
+    class "main.cpp" as Main <<module>> {
+        + main() : int
+        + parseArgs() : AppConfig
+        + createFactory() : IIPCFactory
+        + runProducer() : void
+        + runConsumer() : void
+    }
 }
 
-class Consumer {
-    - reader
-    - running
-    - stats
-    - lastStatsTime
+' ═══════════════════════════════════════════
+'  Business Logic
+' ═══════════════════════════════════════════
+package "Business Logic" {
+    class Producer {
+        - writer_ : IIPCWriter
+        - serializer_ : IEventSerializer
+        - running_ : atomic<bool>
+        - components_ : vector<string>
+        --
+        + Producer(writer, serializer)
+        + Producer(pipeName, factory)
+        + generateEvent() : Event
+        + start() : void
+        + stop() : void
+    }
 
-    --
-    + start()
-    + stop()
-    + processEvent()
-    + updateStatistics()
-    + printStatistics()
+    class Consumer {
+        - reader_ : IIPCReader
+        - serializer_ : IEventSerializer
+        - running_ : atomic<bool>
+        - stats_ : Statistics
+        --
+        + Consumer(reader, serializer)
+        + Consumer(pipeName, factory)
+        + start() : void
+        + stop() : void
+        + processEvent(evt) : void
+        + getStatistics() : Statistics
+    }
 }
 
-class IPCWriter {
-    - pipeName
-    - pipe / fd
+' ═══════════════════════════════════════════
+'  Interfaces
+' ═══════════════════════════════════════════
+package "Interfaces" {
+    interface IStopper {
+        + {abstract} stop() : void
+    }
 
-    --
-    + write()
+    interface IIPCWriter {
+        + {abstract} write(msg) : void
+    }
+
+    interface IIPCReader {
+        + {abstract} read(msg, timeoutMs) : bool
+    }
+
+    interface IIPCFactory {
+        + {abstract} createWriter(name) : IIPCWriter
+        + {abstract} createReader(name) : IIPCReader
+    }
+
+    interface IEventSerializer {
+        + {abstract} serialize(e : Event) : string
+        + {abstract} deserialize(s : string) : Event
+    }
 }
 
-class IPCReader {
-    - pipeName
-    - pipe / fd
+' ═══════════════════════════════════════════
+'  Domain
+' ═══════════════════════════════════════════
+package "Domain" {
+    class Event <<struct>> {
+        + timestamp : time_point
+        + component : string
+        + severity : Severity
+        + message : string
+    }
 
-    --
-    + read()
+    enum Severity {
+        INFO = 0
+        WARNING = 1
+        ERROR = 2
+        --
+        + severityToString() : string
+        + stringToSeverity() : Severity
+        + timestampToString() : string
+    }
+
+    class Statistics <<struct>> {
+        + warning_count : int
+        + error_count : int
+        + component_severity_count : map
+    }
 }
 
-class "main.cpp" as Main {
-    + main()
-    + runProducer()
-    + runConsumer()
+' ═══════════════════════════════════════════
+'  IPC Implementation
+' ═══════════════════════════════════════════
+package "IPC Implementation\n(Named Pipe / FIFO)" {
+    class IPCWriter {
+        - pipeName_ : string
+        - pipe_ / fd_
+        --
+        + write(msg) : void
+        - createPipe() : void
+        - reconnect() : void
+    }
+
+    class IPCReader {
+        - pipeName_ : string
+        - pipe_ / fd_
+        --
+        + read(msg, timeoutMs) : bool
+        - connect() : void
+    }
+
+    class PipeIPCFactory {
+        + createWriter(name) : IIPCWriter
+        + createReader(name) : IIPCReader
+    }
 }
 
-Severity : + severityToString()
-Severity : + stringToSeverity()
+' ═══════════════════════════════════════════
+'  Serialization
+' ═══════════════════════════════════════════
+package "Serialization" {
+    class EventSerializer {
+        + serialize(e : Event) : string
+        + deserialize(s : string) : Event
+    }
+}
 
-Producer *-- IPCWriter
-Consumer *-- IPCReader
+' ═══════════════════════════════════════════
+'  Relationships
+' ═══════════════════════════════════════════
 
-Producer ..> Event
-Consumer ..> Event
+' Interface implementations
+IStopper         <|..  Producer
+IStopper         <|..  Consumer
+IIPCWriter       <|..  IPCWriter
+IIPCReader       <|..  IPCReader
+IIPCFactory      <|..  PipeIPCFactory
+IEventSerializer <|..  EventSerializer
 
-Main ..> Producer
-Main ..> Consumer
+' Factory creates implementations
+PipeIPCFactory  ..>  IPCWriter  : <<creates>>
+PipeIPCFactory  ..>  IPCReader  : <<creates>>
+
+' Producer / Consumer use interfaces
+Producer  *--  IIPCWriter
+Producer  o--  IEventSerializer
+Consumer  *--  IIPCReader
+Consumer  o--  IEventSerializer
+Consumer  *--  Statistics
+
+' Domain
+Event      -->  Severity
+Producer  ..>   Event
+Consumer  ..>   Event
+
+' Entry point
+Main  ..>  IIPCFactory
+Main  ..>  AppConfig
+Main  ..>  Producer
+Main  ..>  Consumer
 
 @enduml

@@ -7,7 +7,7 @@ namespace EventSerializerUtils {
     Event fromJson(const std::string& json);
 }
 
-class SimpleEventSerializer : public IEventSerializer {
+class EventSerializer : public IEventSerializer {
 public:
     std::string serialize(const Event& e) override;
     Event deserialize(const std::string& s) override;

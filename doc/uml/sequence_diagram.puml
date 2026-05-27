@@ -3,61 +3,97 @@
 skinparam shadowing false
 skinparam sequenceMessageAlign center
 skinparam roundcorner 10
+skinparam maxMessageSize 200
+
 skinparam sequence {
-    ArrowColor black
-    ActorBorderColor black
-    LifeLineBorderColor black
-    ParticipantBorderColor black
+    ArrowColor #333333
+    LifeLineBorderColor #888888
+    ParticipantBorderColor #444444
     ParticipantBackgroundColor white
+    ParticipantFontStyle bold
+    BoxBorderColor #aaaaaa
+    BoxBackgroundColor #fafafa
+    DividerBorderColor #888888
+    DividerBackgroundColor #f0f0f0
 }
 
+participant "main.cpp" as Main
+participant ":PipeIPCFactory" as Factory
+participant ":IPCWriter\n(Pipe Server)" as PipeW
+participant ":IPCReader\n(Pipe Client)" as PipeR
 participant ":Producer" as P
-participant "Named Pipe\n/ FIFO" as Pipe
+participant ":EventSerializer" as Ser
 participant ":Consumer" as C
 
 == Startup ==
 
-P -> Pipe : create pipe\n(server side)
-P -> P    : waiting for consumer...
+note over Main
+  --transport pipe
+  --producer / --consumer
+end note
 
-C -> Pipe : connect\n(retry loop)
-Pipe --> P : consumer connected
-Pipe --> C : connected to producer
+Main -> Factory : new PipeIPCFactory()
+Main -> P       : runProducer(name, factory)
+Main -> C       : runConsumer(name, factory)
+
+P    -> Factory : createWriter(pipeName)
+Factory -> PipeW : new IPCWriter(pipeName)
+Factory --> P   : IIPCWriter
+
+P    -> PipeW   : createPipe()\n[CreateNamedPipeA / mkfifo]
+P    -> PipeW   : ConnectNamedPipe()\nblocking — wait for client
+
+C    -> Factory : createReader(pipeName)
+Factory -> PipeR : new IPCReader(pipeName)
+Factory --> C   : IIPCReader
+
+C    -> PipeR   : connect()\n[CreateFileA / open] retry loop
+PipeR --> C     : connected
+PipeW --> P     : consumer connected
 
 == Event Loop ==
 
-loop every 500 ms
-    P -> P       : generateEvent()\n{ component, severity, message }
-    P -> P       : serialize() → JSON string
-    P -> Pipe    : write(json)
-    Pipe -> C    : read(json)
-    C -> C       : deserialize() → Event
+loop every ~500 ms
+
+    P -> P     : generateEvent()\n{ component, severity, message }
+    P -> Ser   : serialize(event) → JSON
+    Ser --> P  : "{timestamp, component,\n severity, message}"
+    P -> PipeW : write(json)
+    PipeW -> PipeR : [Named Pipe / FIFO]
+
+    C -> PipeR : read(message, 100 ms)
+    PipeR --> C : json string
+    C -> Ser   : deserialize(json) → Event
+    Ser --> C  : Event
 
     alt severity < WARNING
-        C -> C   : discard event
+        C -> C : discard (INFO filtered)
     else severity >= WARNING
-        C -> C   : update statistics\n(warning/error count)
-        C -> C   : print event log
+        C -> C : stats_.warning/error_count++\ncomponent_severity_count update
+        C -> C : print "[timestampToString(evt)]\n[Consumer] component [SEV] message"
     end
+
 end
 
 == Statistics (every 5 s) ==
 
-C -> C : printStatistics()\nWARNINGs / ERRORs\nper component
+C -> C : printStatistics()\nWARNINGs / ERRORs per component
 
-== Shutdown: Consumer exits ==
+== Shutdown: Consumer disconnects ==
 
-C ->x Pipe : close connection
+C ->x PipeR : close pipe handle
 
-P -> P     : WriteFile → BROKEN_PIPE\nreconnect()\nwaiting for new consumer...
+PipeW -> P  : WriteFile → ERROR_BROKEN_PIPE\n(Windows) / EPIPE (Linux)
+P -> PipeW  : reconnect()\nDisconnectNamedPipe + ConnectNamedPipe
+note right of P : "Waiting for new consumer..."
 
 ...new consumer can connect again...
 
 == Shutdown: Producer exits ==
 
-P ->x Pipe : close / destroy pipe
+P ->x PipeW : close / destroy pipe
 
-Pipe -> C  : read() → EOF / BROKEN_PIPE
-C -> C     : "Producer has disconnected.\nShutting down."
+PipeR -> C  : read() → EOF / BROKEN_PIPE\nthrow PipeDisconnectedException
+C -> C      : catch PipeDisconnectedException\n"Producer has disconnected. Shutting down."
 
 @enduml

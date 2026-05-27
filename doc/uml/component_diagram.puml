@@ -1,36 +1,98 @@
-@startuml ComponentDiagram
+@startuml component_diagram
+
 top to bottom direction
 skinparam componentStyle rectangle
 skinparam shadowing false
+skinparam roundcorner 8
 
-' Komponenten
-component "event_system (main)" as Main
-component "Producer" as Producer
-component "Consumer" as Consumer
-component "IPC (abstraction)\nIPCWriter / IPCReader" as IPC
-component "Event Model\nserialize()/deserialize()" as EventModel
-component "Platform IPC Impl\nWindows: Named Pipes\nLinux: FIFO (/tmp/)" as IPCImpl
+skinparam component {
+    BackgroundColor white
+    BorderColor #444444
+    ArrowColor #333333
+}
+skinparam package {
+    BackgroundColor #fafafa
+    BorderColor #aaaaaa
+    FontStyle bold
+}
+skinparam interface {
+    BackgroundColor #e8f4fb
+    BorderColor #2980b9
+}
+skinparam nodesep 50
+skinparam ranksep 40
 
-' Enum / Typ
-component "Severity (enum)" as Severity
+' ── Entry Point ──────────────────────────────────
+package "Entry Point" {
+    component "main.cpp" as Main
+    note right of Main
+        --transport pipe  (default)
+        --producer / --consumer
+    end note
+}
 
-' Beziehungen
-Main --> Producer : start/stop
-Main --> Consumer : start/stop
+' ── Factory Layer ────────────────────────────────
+package "Factory Layer" {
+    interface "IIPCFactory" as IFactory
+    component "PipeIPCFactory" as PipeFactory
+    PipeFactory -up-> IFactory : implements
+}
 
-Producer ..> EventModel : serialize() -> JSON/text
-Producer --> IPC : send(serialized event)
+' ── Business Logic ───────────────────────────────
+package "Business Logic" {
+    component "Producer\n(Pipe Server)" as Producer
+    component "Consumer\n(Pipe Client)" as Consumer
+}
 
-Consumer --> IPC : read(serialized event)
-Consumer ..> EventModel : deserialize(serialized event)
+' ── IPC Abstraction ──────────────────────────────
+package "IPC Abstraction" {
+    interface "IIPCWriter" as IWriter
+    interface "IIPCReader" as IReader
+}
 
-IPC ..> IPCImpl : delegates to (platform-specific)
+' ── Serialization ────────────────────────────────
+package "Serialization" {
+    interface "IEventSerializer" as ISerializer
+    component "EventSerializer\n(JSON)" as Serializer
+    Serializer -up-> ISerializer : implements
+}
 
-EventModel --> Severity : uses (attribute type)
+' ── Domain ───────────────────────────────────────
+package "Domain" {
+    component "Event\n{ timestamp, component,\n  severity, message }" as EventModel
+    component "Severity\n(INFO / WARNING / ERROR)" as Severity
+    EventModel --> Severity
+}
 
-note right of EventModel
-  Gemeinsames Datenformat für Producer/Consumer.
-  Textbasierte Serialisierung (JSON-ähnlich).
-end note
+' ── Platform IPC ─────────────────────────────────
+package "Platform IPC Implementation" {
+    component "IPCWriter\nWindows: CreateNamedPipeA\nLinux: mkfifo + open(O_WRONLY)" as IPCWriter
+    component "IPCReader\nWindows: CreateFileA\nLinux: open(O_RDONLY)" as IPCReader
+    IPCWriter -up-> IWriter : implements
+    IPCReader -up-> IReader : implements
+}
+
+' ── Relationships ────────────────────────────────
+
+' main selects factory and wires everything
+Main     -down-> IFactory       : createFactory(--transport)
+Main     -down-> Producer       : runProducer(name, factory)
+Main     -down-> Consumer       : runConsumer(name, factory)
+
+' factory creates IPC objects
+IFactory -down-> IWriter        : createWriter()
+IFactory -down-> IReader        : createReader()
+PipeFactory ..> IPCWriter       : <<creates>>
+PipeFactory ..> IPCReader       : <<creates>>
+
+' Producer uses IIPCWriter + IEventSerializer
+Producer -down-> IWriter        : write(json)
+Producer -down-> ISerializer    : serialize(Event)
+Producer ..> EventModel         : generates
+
+' Consumer uses IIPCReader + IEventSerializer
+Consumer -down-> IReader        : read(json)
+Consumer -down-> ISerializer    : deserialize(json)
+Consumer ..> EventModel         : processes
 
 @enduml

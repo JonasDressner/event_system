@@ -19,7 +19,7 @@ Consumer::Consumer(std::unique_ptr<IIPCReader> reader,
 {}
 
 Consumer::Consumer(const std::string& pipeName, IIPCFactory& factory)
-    : Consumer(factory.createReader(pipeName), std::make_shared<SimpleEventSerializer>())
+    : Consumer(factory.createReader(pipeName), std::make_shared<EventSerializer>())
 {}
 
 // ---------- Consumer public methods ----------
