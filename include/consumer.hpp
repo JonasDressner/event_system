@@ -30,7 +30,7 @@ public:
     Statistics getStatistics() const;
 
 private:
-    void printStatistics();
+    void printStatistics() const;
 
     std::unique_ptr<IIPCReader> reader_;
     std::shared_ptr<IEventSerializer> serializer_;

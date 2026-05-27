@@ -13,9 +13,9 @@ static std::string getLastWin32Error() {
     char buf[256];
     DWORD size = FormatMessageA(
         FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-        NULL, err,
+        nullptr, err,
         MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-        buf, static_cast<DWORD>(sizeof(buf)), NULL
+        buf, static_cast<DWORD>(sizeof(buf)), nullptr
     );
     std::string msg = size ? std::string(buf, size) : "Unknown error";
     while (!msg.empty() && (msg.back() == '\n' || msg.back() == '\r'))
@@ -64,11 +64,11 @@ void IPCWriter::write(const std::string& message) {
         throw std::runtime_error("Pipe not connected");
 
     DWORD bytesWritten = 0;
-    if (!WriteFile(pipe_, message.c_str(), static_cast<DWORD>(message.length()), &bytesWritten, NULL)) {
+    if (!WriteFile(pipe_, message.c_str(), static_cast<DWORD>(message.length()), &bytesWritten, nullptr)) {
         DWORD err = GetLastError();
         if (err == ERROR_BROKEN_PIPE || err == ERROR_NO_DATA) {
             reconnect();
-            if (!WriteFile(pipe_, message.c_str(), static_cast<DWORD>(message.length()), &bytesWritten, NULL))
+            if (!WriteFile(pipe_, message.c_str(), static_cast<DWORD>(message.length()), &bytesWritten, nullptr))
                 throw std::runtime_error("Failed to write after reconnect: " + getLastWin32Error());
             return;
         }
@@ -99,13 +99,13 @@ void IPCWriter::createPipe() {
         fullPipeName.c_str(),
         PIPE_ACCESS_OUTBOUND,
         PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT,
-        1, 4096, 4096, 0, NULL
+        1, 4096, 4096, 0, nullptr
     );
     if (pipe_ == INVALID_HANDLE_VALUE)
         throw std::runtime_error("Failed to create named pipe: " + getLastWin32Error());
 
     std::cout << "[IPC] Pipe created. Waiting for consumer to connect..." << std::endl;
-    if (!ConnectNamedPipe(pipe_, NULL)) {
+    if (!ConnectNamedPipe(pipe_, nullptr)) {
         DWORD err = GetLastError();
         if (err != ERROR_PIPE_CONNECTED) {
             CloseHandle(pipe_);
@@ -131,7 +131,7 @@ void IPCWriter::reconnect() {
 #ifdef _WIN32
     DisconnectNamedPipe(pipe_);
     std::cout << "[IPC] Consumer disconnected. Waiting for new consumer to connect..." << std::endl;
-    if (!ConnectNamedPipe(pipe_, NULL)) {
+    if (!ConnectNamedPipe(pipe_, nullptr)) {
         DWORD err = GetLastError();
         if (err != ERROR_PIPE_CONNECTED) {
             CloseHandle(pipe_);
@@ -186,7 +186,7 @@ bool IPCReader::read(std::string& message, int timeoutMs) {
     ULONGLONG deadline = GetTickCount64() + static_cast<ULONGLONG>(timeoutMs < 0 ? 0 : timeoutMs);
     while (true) {
         DWORD available = 0;
-        if (!PeekNamedPipe(pipe_, NULL, 0, NULL, &available, NULL)) {
+        if (!PeekNamedPipe(pipe_, nullptr, 0, nullptr, &available, nullptr)) {
             DWORD err = GetLastError();
             if (err == ERROR_BROKEN_PIPE)
                 throw PipeDisconnectedException();
@@ -201,7 +201,7 @@ bool IPCReader::read(std::string& message, int timeoutMs) {
 
     char buffer[4096] = {0};
     DWORD bytesRead = 0;
-    if (!ReadFile(pipe_, buffer, sizeof(buffer) - 1, &bytesRead, NULL)) {
+    if (!ReadFile(pipe_, buffer, sizeof(buffer) - 1, &bytesRead, nullptr)) {
         DWORD err = GetLastError();
         if (err == ERROR_PIPE_LISTENING || err == ERROR_NO_DATA)
             return false;
@@ -254,11 +254,11 @@ void IPCReader::connect() {
     std::cout << "[IPC] Connecting to producer pipe..." << std::endl;
     for (int attempt = 0; attempt < maxRetries; ++attempt) {
         pipe_ = CreateFileA(
-            fullPipeName.c_str(), GENERIC_READ, 0, NULL, OPEN_EXISTING, 0, NULL
+            fullPipeName.c_str(), GENERIC_READ, 0, nullptr, OPEN_EXISTING, 0, nullptr
         );
         if (pipe_ != INVALID_HANDLE_VALUE) {
             DWORD dwMode = PIPE_READMODE_MESSAGE;
-            SetNamedPipeHandleState(pipe_, &dwMode, NULL, NULL);
+            SetNamedPipeHandleState(pipe_, &dwMode, nullptr, nullptr);
             std::cout << "[IPC] Connected to producer." << std::endl;
             return;
         }

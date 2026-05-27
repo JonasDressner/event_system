@@ -21,10 +21,10 @@ std::unique_ptr<IIPCFactory> createFactory(const std::string& transport) {
 // ---------------------------------------------------------------
 // Argument parsing
 // ---------------------------------------------------------------
-enum class Mode { Producer, Consumer, Invalid };
+enum class Mode { PRODUCER, CONSUMER, INVALID };
 
 struct AppConfig {
-    Mode        mode      = Mode::Invalid;
+    Mode        mode      = Mode::INVALID;
     std::string pipeName  = "event_pipe";
     std::string transport = "pipe";
 };
@@ -36,9 +36,9 @@ AppConfig parseArgs(int argc, char* argv[]) {
         std::string arg = argv[i];
 
         if (arg == "--producer") {
-            cfg.mode = Mode::Producer;
+            cfg.mode = Mode::PRODUCER;
         } else if (arg == "--consumer") {
-            cfg.mode = Mode::Consumer;
+            cfg.mode = Mode::CONSUMER;
         } else if (arg == "--transport" && i + 1 < argc) {
             cfg.transport = argv[++i];
         } else if (arg.rfind("--", 0) != 0) {
@@ -61,7 +61,7 @@ int main(int argc, char* argv[]) {
 
     AppConfig cfg = parseArgs(argc, argv);
 
-    if (cfg.mode == Mode::Invalid) {
+    if (cfg.mode == Mode::INVALID) {
         std::cerr << "Error: specify --producer or --consumer\n";
         return 1;
     }
@@ -74,7 +74,7 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    if (cfg.mode == Mode::Producer) {
+    if (cfg.mode == Mode::PRODUCER) {
         runProducer(cfg.pipeName, *factory);
     } else {
         runConsumer(cfg.pipeName, *factory);

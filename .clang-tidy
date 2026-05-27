@@ -1,0 +1,76 @@
+---
+# clang-tidy configuration for EventSystem (C++17)
+# Run: clang-tidy src/*.cpp include/*.hpp -- -std=c++17 -Iinclude
+
+Checks: >
+  -*,
+  bugprone-*,
+  -bugprone-easily-swappable-parameters,
+  modernize-use-nullptr,
+  modernize-use-override,
+  modernize-use-default-member-init,
+  modernize-use-nodiscard,
+  modernize-loop-convert,
+  modernize-use-emplace,
+  modernize-avoid-bind,
+  modernize-make-unique,
+  modernize-make-shared,
+  readability-const-return-type,
+  readability-make-member-function-const,
+  readability-qualified-auto,
+  readability-redundant-member-init,
+  readability-identifier-naming,
+  performance-unnecessary-copy-initialization,
+  performance-move-const-arg,
+  performance-for-range-copy,
+  cppcoreguidelines-no-malloc,
+  cppcoreguidelines-prefer-member-initializer,
+  cppcoreguidelines-pro-type-static-cast-downcast,
+
+# Treat all enabled checks as warnings (not errors) by default.
+# Set to true for CI strict mode.
+WarningsAsErrors: ''
+
+HeaderFilterRegex: 'include/.*\.hpp'
+
+CheckOptions:
+  # ── Naming conventions ──────────────────────────────────────────────
+
+  # Types (classes, structs, enums): PascalCase
+  - key: readability-identifier-naming.ClassCase
+    value: CamelCase
+  - key: readability-identifier-naming.StructCase
+    value: CamelCase
+  - key: readability-identifier-naming.EnumCase
+    value: CamelCase
+
+  # Enum values: UPPER_CASE
+  - key: readability-identifier-naming.EnumConstantCase
+    value: UPPER_CASE
+
+  # Methods and free functions: camelBack (= lowerCamelCase)
+  - key: readability-identifier-naming.MethodCase
+    value: camelBack
+  - key: readability-identifier-naming.FunctionCase
+    value: camelBack
+
+  # Private member variables: camelBack with trailing underscore
+  - key: readability-identifier-naming.PrivateMemberCase
+    value: camelBack
+  - key: readability-identifier-naming.PrivateMemberSuffix
+    value: '_'
+  # Public member variables (e.g. structs): camelBack, no suffix
+  - key: readability-identifier-naming.PublicMemberCase
+    value: camelBack
+
+  # Local variables and parameters: camelBack
+  - key: readability-identifier-naming.VariableCase
+    value: camelBack
+  - key: readability-identifier-naming.ParameterCase
+    value: camelBack
+
+  # Interfaces: prefix 'I' + PascalCase (e.g. IIPCWriter)
+  - key: readability-identifier-naming.AbstractClassCase
+    value: CamelCase
+  - key: readability-identifier-naming.AbstractClassPrefix
+    value: 'I'

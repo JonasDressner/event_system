@@ -1,0 +1,44 @@
+# ── Linux Build & Test Environment ──────────────────────────────────
+# Ubuntu 24.04 with GCC 13, CMake, clang-tidy, clang-format
+#
+# Local build:
+#   docker build -f docker/Dockerfile.linux -t event-system:linux .
+#
+# Local run (tests):
+#   docker run --rm event-system:linux
+#
+# Local run (style check only):
+#   docker run --rm event-system:linux style
+
+FROM ubuntu:24.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# ── Install tools ────────────────────────────────────────────────────
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    cmake \
+    make \
+    g++ \
+    git \
+    clang-tidy \
+    clang-format \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /workspace
+
+# ── Copy source ──────────────────────────────────────────────────────
+COPY . .
+
+# ── Build script ─────────────────────────────────────────────────────
+# ARG to switch between targets: "test" (default) or "style"
+ARG TARGET=test
+
+RUN cmake -B build \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+        -DBUILD_TESTS=ON
+
+RUN cmake --build build --parallel $(nproc)
+
+CMD ["sh", "-c", "ctest --test-dir build --output-on-failure"]

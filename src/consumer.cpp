@@ -85,7 +85,7 @@ Statistics Consumer::getStatistics() const {
 
 // ---------- Consumer private methods ----------
 
-void Consumer::printStatistics() {
+void Consumer::printStatistics() const {
     Statistics statsCopy = getStatistics();
 
     std::cout << "\n" << std::string(70, '=') << std::endl;

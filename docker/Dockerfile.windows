@@ -1,0 +1,46 @@
+# ── Windows Build & Test Environment ────────────────────────────────
+# Windows Server Core 2022 with MinGW-w64, CMake, LLVM
+#
+# Local build:
+#   docker build -f docker/Dockerfile.windows -t event-system:windows .
+#
+# Local run (tests):
+#   docker run --rm event-system:windows
+#
+# Note: requires Docker in Windows container mode
+#   Switch: & "$Env:ProgramFiles\Docker\Docker\DockerCli.exe" -SwitchDaemon
+
+FROM mcr.microsoft.com/windows/servercore:ltsc2022
+
+SHELL ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command"]
+
+# ── Install Chocolatey ───────────────────────────────────────────────
+RUN Set-ExecutionPolicy Bypass -Scope Process -Force; \
+    [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor 3072; \
+    iex ((New-Object Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+
+# ── Install build tools ──────────────────────────────────────────────
+RUN choco install -y cmake --installargs 'ADD_CMAKE_TO_PATH=System'
+RUN choco install -y mingw
+RUN choco install -y llvm
+RUN choco install -y git
+
+# Reload PATH
+RUN $env:PATH = [System.Environment]::GetEnvironmentVariable('PATH','Machine') + ';' + \
+                [System.Environment]::GetEnvironmentVariable('PATH','User'); \
+    [System.Environment]::SetEnvironmentVariable('PATH', $env:PATH, 'Process')
+
+WORKDIR C:\\workspace
+
+# ── Copy source ──────────────────────────────────────────────────────
+COPY . .
+
+# ── Configure & Build ────────────────────────────────────────────────
+RUN cmake -B build -G "MinGW Makefiles" \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+        -DBUILD_TESTS=ON
+
+RUN cmake --build build --parallel
+
+CMD ["powershell", "-Command", "ctest --test-dir build --output-on-failure"]

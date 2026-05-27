@@ -9,11 +9,11 @@ namespace EventSerializerUtils {
 
 static std::string formatTimestamp(const std::chrono::system_clock::time_point& tp) {
     auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(tp.time_since_epoch()) % 1000;
-    auto time_t_val = std::chrono::system_clock::to_time_t(tp);
-    std::tm* tm_info = std::localtime(&time_t_val);
+    auto timeTVal = std::chrono::system_clock::to_time_t(tp);
+    std::tm* tmInfo = std::localtime(&timeTVal);
 
     std::ostringstream ss;
-    ss << std::put_time(tm_info, "%Y-%m-%d %H:%M:%S");
+    ss << std::put_time(tmInfo, "%Y-%m-%d %H:%M:%S");
     ss << "." << std::setfill('0') << std::setw(3) << ms.count();
     return ss.str();
 }

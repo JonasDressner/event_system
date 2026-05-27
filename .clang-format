@@ -1,0 +1,71 @@
+---
+# clang-format configuration for EventSystem (C++17)
+# Run: clang-format -i src/*.cpp include/*.hpp
+
+Language:        Cpp
+Standard:        c++17
+BasedOnStyle:    LLVM
+
+# ── Indentation ─────────────────────────────────────────────────────
+IndentWidth:              4
+ContinuationIndentWidth:  4
+TabWidth:                 4
+UseTab:                   Never
+AccessModifierOffset:    -4
+IndentCaseLabels:         true
+
+# ── Line length ──────────────────────────────────────────────────────
+ColumnLimit:              100
+
+# ── Braces ───────────────────────────────────────────────────────────
+BreakBeforeBraces:        Attach
+BraceWrapping:
+  AfterClass:      false
+  AfterFunction:   false
+  AfterNamespace:  false
+  AfterStruct:     false
+  BeforeElse:      false
+
+# ── Spaces ───────────────────────────────────────────────────────────
+SpaceBeforeParens:            ControlStatements
+SpaceAfterTemplateKeyword:    true
+SpacesInParentheses:          false
+SpacesInSquareBrackets:       false
+SpaceBeforeSquareBrackets:    false
+SpaceInEmptyParentheses:      false
+SpaceBeforeRangeBasedForLoopColon: true
+
+# ── Alignment ────────────────────────────────────────────────────────
+AlignConsecutiveAssignments:  false
+AlignConsecutiveDeclarations: false
+AlignTrailingComments:        true
+
+# ── Pointers & References ────────────────────────────────────────────
+PointerAlignment:         Left      # std::string& msg  (not: std::string &msg)
+ReferenceAlignment:       Left
+
+# ── Include ordering ─────────────────────────────────────────────────
+SortIncludes:             CaseSensitive
+IncludeBlocks:            Regroup
+IncludeCategories:
+  # Own headers first
+  - Regex:    '^"'
+    Priority: 1
+  # System/STL headers
+  - Regex:    '^<'
+    Priority: 2
+
+# ── Constructor initializer lists ────────────────────────────────────
+BreakConstructorInitializers:       BeforeColon
+ConstructorInitializerIndentWidth:  4
+PackConstructorInitializers:        Never
+
+# ── Function parameters ──────────────────────────────────────────────
+AllowAllParametersOfDeclarationOnNextLine: false
+BinPackParameters:                        false
+BinPackArguments:                         false
+
+# ── Misc ─────────────────────────────────────────────────────────────
+Cpp11BracedListStyle:      true
+FixNamespaceComments:      true
+SeparateDefinitionBlocks:  Always
