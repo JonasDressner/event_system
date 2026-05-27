@@ -95,34 +95,47 @@ jobs:
             event-system:linux \
             sh -c "ctest --test-dir build --output-on-failure -V"
 
-  # ── Stage 3: Test on Windows (Docker image) ───────────────────────
+  # ── Stage 3: Test on Windows (MSYS2/UCRT64 native — same env as local dev) ──
   test-windows:
-    name: Test — Windows (Docker)
+    name: Test — Windows (MinGW / MSYS2)
     runs-on: windows-2022
     needs: style
+
+    # All steps run inside the MSYS2 shell so cmake/make/ctest are on PATH
+    defaults:
+      run:
+        shell: msys2 {0}
 
     steps:
       - uses: actions/checkout@v4
 
-      # Switch Docker daemon to Windows container mode
-      - name: Switch to Windows containers
-        run: |
-          & "$Env:ProgramFiles\Docker\Docker\DockerCli.exe" -SwitchDaemon
-        shell: pwsh
+      - name: Set up MSYS2 UCRT64
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: false          # skip full mirror sync to keep CI fast
+          install: >-
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-cmake
+            make
 
       # Cache Catch2 download
       - name: Cache Catch2
         uses: actions/cache@v4
         with:
-          path: build\_deps
+          path: build/_deps
           key: catch2-windows-${{ hashFiles('CMakeLists.txt') }}
           restore-keys: catch2-windows-
 
-      - name: Build Windows Docker image
-        run: docker build -f docker/Dockerfile.windows -t event-system:windows .
-
-      - name: Run tests inside Docker
+      - name: Configure CMake
         run: |
-          docker run --rm event-system:windows `
-            powershell -Command "ctest --test-dir build --output-on-failure -V"
-        shell: pwsh
+          cmake -B build \
+            -G "MSYS Makefiles" \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_TESTS=ON
+
+      - name: Build
+        run: cmake --build build --parallel $(nproc)
+
+      - name: Run tests
+        run: ctest --test-dir build --output-on-failure -V

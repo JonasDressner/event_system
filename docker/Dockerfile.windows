@@ -1,14 +1,15 @@
 # ── Windows Build & Test Environment ────────────────────────────────
 # Windows Server Core 2022 with MinGW-w64, CMake, LLVM
 #
-# Local build:
+# FOR LOCAL USE ONLY — GitHub Actions CI uses MSYS2 natively (no Docker).
+# Windows Docker containers require Docker Desktop in Windows-container mode.
+#
+# Local build (Docker Desktop must be switched to Windows containers first):
+#   & "$Env:ProgramFiles\Docker\Docker\DockerCli.exe" -SwitchDaemon
 #   docker build -f docker/Dockerfile.windows -t event-system:windows .
 #
 # Local run (tests):
 #   docker run --rm event-system:windows
-#
-# Note: requires Docker in Windows container mode
-#   Switch: & "$Env:ProgramFiles\Docker\Docker\DockerCli.exe" -SwitchDaemon
 
 FROM mcr.microsoft.com/windows/servercore:ltsc2022
 
