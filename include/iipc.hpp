@@ -1,5 +1,13 @@
 #pragma once
 #include <string>
+#include <stdexcept>
+
+// Thrown by IPCReader::read() when the producer has closed the pipe.
+class PipeDisconnectedException : public std::runtime_error {
+public:
+    PipeDisconnectedException()
+        : std::runtime_error("Producer has disconnected") {}
+};
 
 struct IIPCWriter {
     virtual ~IIPCWriter() = default;

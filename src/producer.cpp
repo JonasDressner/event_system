@@ -7,7 +7,6 @@
 #include <thread>
 #include <csignal>
 
-
 // ---------- Producer constructors ----------
 
 Producer::Producer(std::unique_ptr<IIPCWriter> writer,
@@ -56,7 +55,8 @@ void Producer::start() {
             std::string serialized = serializer_->serialize(evt);
             writer_->write(serialized);
 
-            std::cout << "[Producer] Event #" << (++eventCount)
+            std::cout << "[" << timestampToString(evt.timestamp) << "]"
+                      << " [Producer] Event #" << (++eventCount)
                       << " sent: " << evt.component
                       << " [" << severityToString(evt.severity) << "]"
                       << std::endl;

@@ -26,7 +26,8 @@ if(WIN32)
     message(STATUS "Building for Windows")
 else()
     message(STATUS "Building for Linux")
-    target_link_libraries(EventSystem pthread)
+    target_link_libraries(EventSystem      pthread)
+    target_link_libraries(EventSystemTests pthread)
 endif()
 
 # Compiler flags

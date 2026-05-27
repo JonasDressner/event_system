@@ -43,13 +43,11 @@ void Consumer::start() {
             }
 
             std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        } catch (const PipeDisconnectedException&) {
+            std::cout << "[Consumer] Producer has disconnected. Shutting down." << std::endl;
+            break;
         } catch (const std::exception& e) {
-            std::string what = e.what();
-            if (what == "Producer has disconnected") {
-                std::cout << "[Consumer] Producer has disconnected. Shutting down." << std::endl;
-            } else {
-                std::cerr << "[Consumer] Error: " << what << std::endl;
-            }
+            std::cerr << "[Consumer] Error: " << e.what() << std::endl;
             break;
         }
     }
@@ -74,8 +72,10 @@ void Consumer::processEvent(const Event& evt) {
         stats_.component_severity_count[evt.component][severityToString(evt.severity)]++;
     }
 
-    std::cout << "[Consumer] Event received: " << evt.component << " ["
-              << severityToString(evt.severity) << "] " << evt.message << std::endl;
+    std::cout << "[" << timestampToString(evt.timestamp) << "]"
+              << " [Consumer] Event received: " << evt.component
+              << " [" << severityToString(evt.severity) << "] "
+              << evt.message << std::endl;
 }
 
 Statistics Consumer::getStatistics() const {

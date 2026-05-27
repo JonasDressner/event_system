@@ -10,7 +10,8 @@ enum class Severity {
 };
 
 std::string severityToString(Severity sev);
-Severity stringToSeverity(const std::string& str);
+Severity    stringToSeverity(const std::string& str);
+std::string timestampToString(const std::chrono::system_clock::time_point& tp);
 
 struct Event {
     std::chrono::system_clock::time_point timestamp;

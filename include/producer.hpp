@@ -1,7 +1,6 @@
 #pragma once
 
 #include "event.hpp"
-#include "iipc.hpp"
 #include "iipc_factory.hpp"
 #include "ievent_serializer.hpp"
 #include "signal_helper.hpp"
