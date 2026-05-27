@@ -1,5 +1,7 @@
 #pragma once
+
 #include "event.hpp"
+
 #include <string>
 
 struct IEventSerializer {

@@ -1,30 +1,29 @@
 #include "producer.hpp"
+
 #include "event_serializer.hpp"
 #include "iipc_factory.hpp"
 #include "signal_helper.hpp"
-#include <iostream>
+
 #include <chrono>
-#include <thread>
 #include <csignal>
+#include <iostream>
+#include <thread>
 
 // ---------- Producer constructors ----------
 
-Producer::Producer(std::unique_ptr<IIPCWriter> writer,
-                   std::shared_ptr<IEventSerializer> serializer)
-    : writer_(std::move(writer))
-    , serializer_(std::move(serializer))
-    , running_(true)
-    , gen_(std::random_device{}())
-    , severityDist_(0, 2)
-    , componentDist_(0, 4)
-    , messageDist_(0, 4)
-{
+Producer::Producer(std::unique_ptr<IIPCWriter> writer, std::shared_ptr<IEventSerializer> serializer)
+    : writer_(std::move(writer)),
+      serializer_(std::move(serializer)),
+      running_(true),
+      gen_(std::random_device{}()),
+      severityDist_(0, 2),
+      componentDist_(0, 4),
+      messageDist_(0, 4) {
     components_ = {"Database", "API", "Cache", "Auth", "Logging"};
 }
 
 Producer::Producer(const std::string& pipeName, IIPCFactory& factory)
-    : Producer(factory.createWriter(pipeName), std::make_shared<EventSerializer>())
-{}
+    : Producer(factory.createWriter(pipeName), std::make_shared<EventSerializer>()) {}
 
 // ---------- Producer public methods ----------
 
@@ -34,13 +33,11 @@ Event Producer::generateEvent() {
     evt.component = components_[componentDist_(gen_)];
     evt.severity = static_cast<Severity>(severityDist_(gen_));
 
-    const std::string messages[] = {
-        "Operation completed successfully",
-        "Processing request",
-        "Performance degradation detected",
-        "Connection timeout",
-        "Critical system error"
-    };
+    const std::string messages[] = {"Operation completed successfully",
+                                    "Processing request",
+                                    "Performance degradation detected",
+                                    "Connection timeout",
+                                    "Critical system error"};
     evt.message = messages[messageDist_(gen_)];
     return evt;
 }
@@ -56,11 +53,8 @@ void Producer::start() {
             writer_->write(serialized);
 
             std::cout << "[" << timestampToString(evt.timestamp) << "]"
-                      << " [Producer] Event #" << (++eventCount)
-                      << " sent: " << evt.component
-                      << " [" << severityToString(evt.severity) << "] "
-                      << evt.message
-                      << std::endl;
+                      << " [Producer] Event #" << (++eventCount) << " sent: " << evt.component
+                      << " [" << severityToString(evt.severity) << "] " << evt.message << std::endl;
 
             std::this_thread::sleep_for(std::chrono::milliseconds(500));
         } catch (const std::exception& e) {
@@ -70,9 +64,7 @@ void Producer::start() {
     }
 }
 
-void Producer::stop() noexcept {
-    running_.store(false);
-}
+void Producer::stop() noexcept { running_.store(false); }
 
 // ---------- free function ----------
 

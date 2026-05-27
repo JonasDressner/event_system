@@ -1,11 +1,12 @@
 #pragma once
+
 #include "ievent_serializer.hpp"
 
 // JSON serialization utilities — implemented in event_serializer.cpp
 namespace EventSerializerUtils {
-    std::string toJson(const Event& e);
-    Event fromJson(const std::string& json);
-}
+std::string toJson(const Event& e);
+Event fromJson(const std::string& json);
+} // namespace EventSerializerUtils
 
 class EventSerializer : public IEventSerializer {
 public:

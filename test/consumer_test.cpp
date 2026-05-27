@@ -1,19 +1,20 @@
-#include <catch2/catch_test_macros.hpp>
 #include "consumer.hpp"
 #include "fakes.hpp"
+
+#include <catch2/catch_test_macros.hpp>
 
 TEST_CASE("Consumer filters INFO events - no statistics update", "[Consumer]") {
     Consumer consumer(std::make_unique<FakeReader>(), std::make_shared<FakeSerializer>());
 
     Event evt;
     evt.component = "API";
-    evt.severity  = Severity::INFO;
-    evt.message   = "All good";
+    evt.severity = Severity::INFO;
+    evt.message = "All good";
     consumer.processEvent(evt);
 
     auto stats = consumer.getStatistics();
     REQUIRE(stats.warningCount == 0);
-    REQUIRE(stats.errorCount   == 0);
+    REQUIRE(stats.errorCount == 0);
     REQUIRE(stats.componentSeverityCount.empty());
 }
 
@@ -22,14 +23,14 @@ TEST_CASE("Consumer counts WARNING events", "[Consumer]") {
 
     Event evt;
     evt.component = "Cache";
-    evt.severity  = Severity::WARNING;
-    evt.message   = "Cache miss";
+    evt.severity = Severity::WARNING;
+    evt.message = "Cache miss";
     consumer.processEvent(evt);
     consumer.processEvent(evt);
 
     auto stats = consumer.getStatistics();
     REQUIRE(stats.warningCount == 2);
-    REQUIRE(stats.errorCount   == 0);
+    REQUIRE(stats.errorCount == 0);
     REQUIRE(stats.componentSeverityCount.at("Cache").at("WARNING") == 2);
 }
 
@@ -38,13 +39,13 @@ TEST_CASE("Consumer counts ERROR events", "[Consumer]") {
 
     Event evt;
     evt.component = "Database";
-    evt.severity  = Severity::ERROR;
-    evt.message   = "Connection timeout";
+    evt.severity = Severity::ERROR;
+    evt.message = "Connection timeout";
     consumer.processEvent(evt);
 
     auto stats = consumer.getStatistics();
     REQUIRE(stats.warningCount == 0);
-    REQUIRE(stats.errorCount   == 1);
+    REQUIRE(stats.errorCount == 1);
     REQUIRE(stats.componentSeverityCount.at("Database").at("ERROR") == 1);
 }
 
@@ -53,13 +54,13 @@ TEST_CASE("Consumer tracks multiple components independently", "[Consumer]") {
 
     Event warn;
     warn.component = "Cache";
-    warn.severity  = Severity::WARNING;
-    warn.message   = "Cache miss";
+    warn.severity = Severity::WARNING;
+    warn.message = "Cache miss";
 
     Event err;
     err.component = "Database";
-    err.severity  = Severity::ERROR;
-    err.message   = "Connection timeout";
+    err.severity = Severity::ERROR;
+    err.message = "Connection timeout";
 
     consumer.processEvent(warn);
     consumer.processEvent(err);
@@ -67,9 +68,9 @@ TEST_CASE("Consumer tracks multiple components independently", "[Consumer]") {
 
     auto stats = consumer.getStatistics();
     REQUIRE(stats.warningCount == 2);
-    REQUIRE(stats.errorCount   == 1);
-    REQUIRE(stats.componentSeverityCount.at("Cache").at("WARNING")    == 2);
-    REQUIRE(stats.componentSeverityCount.at("Database").at("ERROR")   == 1);
-    REQUIRE(stats.componentSeverityCount.count("Cache")  == 1);
+    REQUIRE(stats.errorCount == 1);
+    REQUIRE(stats.componentSeverityCount.at("Cache").at("WARNING") == 2);
+    REQUIRE(stats.componentSeverityCount.at("Database").at("ERROR") == 1);
+    REQUIRE(stats.componentSeverityCount.count("Cache") == 1);
     REQUIRE(stats.componentSeverityCount.count("Database") == 1);
 }

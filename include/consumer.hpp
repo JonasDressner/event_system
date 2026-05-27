@@ -1,15 +1,16 @@
 #pragma once
 
 #include "event.hpp"
-#include "iipc_factory.hpp"
 #include "ievent_serializer.hpp"
+#include "iipc_factory.hpp"
 #include "signal_helper.hpp"
-#include <map>
-#include <string>
-#include <memory>
+
 #include <atomic>
-#include <mutex>
 #include <chrono>
+#include <map>
+#include <memory>
+#include <mutex>
+#include <string>
 
 struct Statistics {
     int warningCount = 0;
@@ -19,8 +20,7 @@ struct Statistics {
 
 class Consumer : public IStopper {
 public:
-    Consumer(std::unique_ptr<IIPCReader> reader,
-             std::shared_ptr<IEventSerializer> serializer);
+    Consumer(std::unique_ptr<IIPCReader> reader, std::shared_ptr<IEventSerializer> serializer);
 
     Consumer(const std::string& pipeName, IIPCFactory& factory);
 

@@ -41,9 +41,10 @@ if ($Fix) {
     Write-Host "Mode: CHECK only (use -Fix to format)" -ForegroundColor Gray
     $unformatted = @()
     foreach ($file in $files) {
-        $original  = Get-Content $file.FullName -Raw
-        $formatted = & clang-format --style=file $file.FullName
-        if ($original -ne ($formatted -join "`n")) {
+        # --output-replacements-xml emits <replacement ...> tags when changes are needed.
+        # This avoids any \r\n vs \n line-ending comparison issues on Windows.
+        $xml = (& clang-format --output-replacements-xml --style=file $file.FullName) -join ""
+        if ($xml -match "<replacement ") {
             $unformatted += $file.Name
             Write-Host "  DIFF  $($file.Name)" -ForegroundColor Red
         } else {

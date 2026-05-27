@@ -1,8 +1,9 @@
 #pragma once
 
 #include "iipc.hpp"
-#include <string>
+
 #include <stdexcept>
+#include <string>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -23,8 +24,8 @@ private:
     int fd_{-1};
 #endif
 
-    void createPipe();    // server role: create + wait for first client
-    void reconnect();     // called internally when consumer disconnects
+    void createPipe(); // server role: create + wait for first client
+    void reconnect();  // called internally when consumer disconnects
 };
 
 // Consumer side: connects to the pipe created by the producer.
@@ -42,5 +43,5 @@ private:
     int fd_{-1};
 #endif
 
-    void connect();   // client role: retry-connect to producer's pipe
+    void connect(); // client role: retry-connect to producer's pipe
 };

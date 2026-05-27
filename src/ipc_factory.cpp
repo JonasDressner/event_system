@@ -1,4 +1,5 @@
 #include "ipc_factory.hpp"
+
 #include "ipc.hpp"
 
 std::unique_ptr<IIPCWriter> PipeIPCFactory::createWriter(const std::string& name) {

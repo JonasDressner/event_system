@@ -1,9 +1,10 @@
 #include "iipc_factory.hpp"
 #include "ipc_factory.hpp"
+
 #include <iostream>
-#include <string>
 #include <memory>
 #include <stdexcept>
+#include <string>
 
 void runProducer(const std::string& pipeName, IIPCFactory& factory);
 void runConsumer(const std::string& pipeName, IIPCFactory& factory);
@@ -12,7 +13,8 @@ void runConsumer(const std::string& pipeName, IIPCFactory& factory);
 // Factory selection — add new transports here only
 // ---------------------------------------------------------------
 std::unique_ptr<IIPCFactory> createFactory(const std::string& transport) {
-    if (transport == "pipe") return std::make_unique<PipeIPCFactory>();
+    if (transport == "pipe")
+        return std::make_unique<PipeIPCFactory>();
     // future: if (transport == "tcp") return std::make_unique<TCPIPCFactory>();
     // future: if (transport == "shm") return std::make_unique<SharedMemIPCFactory>();
     throw std::invalid_argument("Unknown transport: '" + transport + "'. Available: pipe");
@@ -24,8 +26,8 @@ std::unique_ptr<IIPCFactory> createFactory(const std::string& transport) {
 enum class Mode { PRODUCER, CONSUMER, INVALID };
 
 struct AppConfig {
-    Mode        mode      = Mode::INVALID;
-    std::string pipeName  = "event_pipe";
+    Mode mode = Mode::INVALID;
+    std::string pipeName = "event_pipe";
     std::string transport = "pipe";
 };
 
@@ -42,7 +44,7 @@ AppConfig parseArgs(int argc, char* argv[]) {
         } else if (arg == "--transport" && i + 1 < argc) {
             cfg.transport = argv[++i];
         } else if (arg.rfind("--", 0) != 0) {
-            cfg.pipeName = arg;   // positional: pipe name
+            cfg.pipeName = arg; // positional: pipe name
         }
     }
 

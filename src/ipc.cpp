@@ -1,35 +1,36 @@
 #include "ipc.hpp"
 
+#include <iostream>
 #include <stdexcept>
 #include <string>
-#include <iostream>
 
 #ifdef _WIN32
-#include <windows.h>
 #include <sstream>
+#include <windows.h>
 
 static std::string getLastWin32Error() {
     DWORD err = GetLastError();
     char buf[256];
-    DWORD size = FormatMessageA(
-        FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-        nullptr, err,
-        MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-        buf, static_cast<DWORD>(sizeof(buf)), nullptr
-    );
+    DWORD size = FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+                                nullptr,
+                                err,
+                                MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                                buf,
+                                static_cast<DWORD>(sizeof(buf)),
+                                nullptr);
     std::string msg = size ? std::string(buf, size) : "Unknown error";
     while (!msg.empty() && (msg.back() == '\n' || msg.back() == '\r'))
         msg.pop_back();
     return msg + " (" + std::to_string(err) + ")";
 }
 #else
-#include <unistd.h>
+#include <cerrno>
+#include <cstring>
 #include <fcntl.h>
 #include <poll.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <cerrno>
-#include <cstring>
+#include <unistd.h>
 #endif
 
 // ============================================================
@@ -37,8 +38,7 @@ static std::string getLastWin32Error() {
 // ============================================================
 
 IPCWriter::IPCWriter(const std::string& pipeName)
-    : pipeName_(pipeName)
-{
+    : pipeName_(pipeName) {
     createPipe();
 }
 
@@ -59,11 +59,16 @@ void IPCWriter::write(const std::string& message) {
         throw std::runtime_error("Pipe not connected");
 
     DWORD bytesWritten = 0;
-    if (!WriteFile(pipe_, message.c_str(), static_cast<DWORD>(message.length()), &bytesWritten, nullptr)) {
+    if (!WriteFile(
+            pipe_, message.c_str(), static_cast<DWORD>(message.length()), &bytesWritten, nullptr)) {
         DWORD err = GetLastError();
         if (err == ERROR_BROKEN_PIPE || err == ERROR_NO_DATA) {
             reconnect();
-            if (!WriteFile(pipe_, message.c_str(), static_cast<DWORD>(message.length()), &bytesWritten, nullptr))
+            if (!WriteFile(pipe_,
+                           message.c_str(),
+                           static_cast<DWORD>(message.length()),
+                           &bytesWritten,
+                           nullptr))
                 throw std::runtime_error("Failed to write after reconnect: " + getLastWin32Error());
             return;
         }
@@ -79,7 +84,8 @@ void IPCWriter::write(const std::string& message) {
             reconnect();
             result = ::write(fd_, message.c_str(), message.length());
             if (result < 0)
-                throw std::runtime_error(std::string("Failed to write after reconnect: ") + std::strerror(errno));
+                throw std::runtime_error(std::string("Failed to write after reconnect: ") +
+                                         std::strerror(errno));
             return;
         }
         throw std::runtime_error(std::string("Failed to write to pipe: ") + std::strerror(errno));
@@ -90,12 +96,14 @@ void IPCWriter::write(const std::string& message) {
 void IPCWriter::createPipe() {
 #ifdef _WIN32
     std::string fullPipeName = "\\\\.\\pipe\\" + pipeName_;
-    pipe_ = CreateNamedPipeA(
-        fullPipeName.c_str(),
-        PIPE_ACCESS_OUTBOUND,
-        PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT,
-        1, 4096, 4096, 0, nullptr
-    );
+    pipe_ = CreateNamedPipeA(fullPipeName.c_str(),
+                             PIPE_ACCESS_OUTBOUND,
+                             PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT,
+                             1,
+                             4096,
+                             4096,
+                             0,
+                             nullptr);
     if (pipe_ == INVALID_HANDLE_VALUE)
         throw std::runtime_error("Failed to create named pipe: " + getLastWin32Error());
 
@@ -116,7 +124,8 @@ void IPCWriter::createPipe() {
     std::cout << "[IPC] FIFO created. Waiting for consumer to connect..." << std::endl;
     fd_ = open(pipeName_.c_str(), O_WRONLY);
     if (fd_ == -1)
-        throw std::runtime_error(std::string("Failed to open pipe for writing: ") + std::strerror(errno));
+        throw std::runtime_error(std::string("Failed to open pipe for writing: ") +
+                                 std::strerror(errno));
 
     std::cout << "[IPC] Consumer connected." << std::endl;
 #endif
@@ -141,7 +150,8 @@ void IPCWriter::reconnect() {
     std::cout << "[IPC] Consumer disconnected. Waiting for new consumer to connect..." << std::endl;
     fd_ = open(pipeName_.c_str(), O_WRONLY);
     if (fd_ == -1)
-        throw std::runtime_error(std::string("Failed to reopen pipe for writing: ") + std::strerror(errno));
+        throw std::runtime_error(std::string("Failed to reopen pipe for writing: ") +
+                                 std::strerror(errno));
     std::cout << "[IPC] New consumer connected." << std::endl;
 #endif
 }
@@ -151,8 +161,7 @@ void IPCWriter::reconnect() {
 // ============================================================
 
 IPCReader::IPCReader(const std::string& pipeName)
-    : pipeName_(pipeName)
-{
+    : pipeName_(pipeName) {
     connect();
 }
 
@@ -210,15 +219,15 @@ bool IPCReader::read(std::string& message, int timeoutMs) {
 
     // Use poll() to respect the timeout
     struct pollfd pfd;
-    pfd.fd      = fd_;
-    pfd.events  = POLLIN;
+    pfd.fd = fd_;
+    pfd.events = POLLIN;
     pfd.revents = 0;
 
     int ret = poll(&pfd, 1, timeoutMs);
     if (ret < 0)
         throw std::runtime_error(std::string("poll failed: ") + std::strerror(errno));
     if (ret == 0)
-        return false;   // timeout
+        return false; // timeout
 
     char buffer[4096] = {0};
     ssize_t bytesRead = ::read(fd_, buffer, sizeof(buffer) - 1);
@@ -243,9 +252,8 @@ void IPCReader::connect() {
 
     std::cout << "[IPC] Connecting to producer pipe..." << std::endl;
     for (int attempt = 0; attempt < maxRetries; ++attempt) {
-        pipe_ = CreateFileA(
-            fullPipeName.c_str(), GENERIC_READ, 0, nullptr, OPEN_EXISTING, 0, nullptr
-        );
+        pipe_ =
+            CreateFileA(fullPipeName.c_str(), GENERIC_READ, 0, nullptr, OPEN_EXISTING, 0, nullptr);
         if (pipe_ != INVALID_HANDLE_VALUE) {
             DWORD dwMode = PIPE_READMODE_MESSAGE;
             SetNamedPipeHandleState(pipe_, &dwMode, nullptr, nullptr);
@@ -277,7 +285,8 @@ void IPCReader::connect() {
             usleep(200000);
             continue;
         }
-        throw std::runtime_error(std::string("Failed to open pipe for reading: ") + std::strerror(errno));
+        throw std::runtime_error(std::string("Failed to open pipe for reading: ") +
+                                 std::strerror(errno));
     }
     throw std::runtime_error("Failed to open pipe for reading: timeout waiting for producer");
 #endif

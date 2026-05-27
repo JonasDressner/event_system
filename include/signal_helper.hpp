@@ -1,7 +1,7 @@
 #pragma once
 
-#include <csignal>
 #include <atomic>
+#include <csignal>
 #include <iostream>
 
 struct IStopper {

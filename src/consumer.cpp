@@ -1,26 +1,25 @@
 #include "consumer.hpp"
+
 #include "event_serializer.hpp"
 #include "iipc_factory.hpp"
 #include "signal_helper.hpp"
-#include <iostream>
-#include <iomanip>
-#include <csignal>
-#include <thread>
+
 #include <chrono>
+#include <csignal>
+#include <iomanip>
+#include <iostream>
+#include <thread>
 
 // ---------- Consumer constructors ----------
 
-Consumer::Consumer(std::unique_ptr<IIPCReader> reader,
-                   std::shared_ptr<IEventSerializer> serializer)
-    : reader_(std::move(reader))
-    , serializer_(std::move(serializer))
-    , running_(true)
-    , lastStatsTime_(std::chrono::steady_clock::now())
-{}
+Consumer::Consumer(std::unique_ptr<IIPCReader> reader, std::shared_ptr<IEventSerializer> serializer)
+    : reader_(std::move(reader)),
+      serializer_(std::move(serializer)),
+      running_(true),
+      lastStatsTime_(std::chrono::steady_clock::now()) {}
 
 Consumer::Consumer(const std::string& pipeName, IIPCFactory& factory)
-    : Consumer(factory.createReader(pipeName), std::make_shared<EventSerializer>())
-{}
+    : Consumer(factory.createReader(pipeName), std::make_shared<EventSerializer>()) {}
 
 // ---------- Consumer public methods ----------
 
@@ -53,9 +52,7 @@ void Consumer::start() {
     }
 }
 
-void Consumer::stop() noexcept {
-    running_.store(false);
-}
+void Consumer::stop() noexcept { running_.store(false); }
 
 void Consumer::processEvent(const Event& evt) {
     if (evt.severity < Severity::WARNING) {
@@ -73,9 +70,8 @@ void Consumer::processEvent(const Event& evt) {
     }
 
     std::cout << "[" << timestampToString(evt.timestamp) << "]"
-              << " [Consumer] Event received: " << evt.component
-              << " [" << severityToString(evt.severity) << "] "
-              << evt.message << std::endl;
+              << " [Consumer] Event received: " << evt.component << " ["
+              << severityToString(evt.severity) << "] " << evt.message << std::endl;
 }
 
 Statistics Consumer::getStatistics() const {

@@ -1,9 +1,10 @@
 #include "event_serializer.hpp"
-#include <string>
-#include <sstream>
-#include <iomanip>
-#include <ctime>
+
 #include <chrono>
+#include <ctime>
+#include <iomanip>
+#include <sstream>
+#include <string>
 
 namespace EventSerializerUtils {
 
@@ -22,14 +23,29 @@ static std::string escapeJson(const std::string& s) {
     std::string result;
     for (char c : s) {
         switch (c) {
-            case '"':  result += "\\\""; break;
-            case '\\': result += "\\\\"; break;
-            case '\b': result += "\\b";  break;
-            case '\f': result += "\\f";  break;
-            case '\n': result += "\\n";  break;
-            case '\r': result += "\\r";  break;
-            case '\t': result += "\\t";  break;
-            default:   result += c;
+            case '"':
+                result += "\\\"";
+                break;
+            case '\\':
+                result += "\\\\";
+                break;
+            case '\b':
+                result += "\\b";
+                break;
+            case '\f':
+                result += "\\f";
+                break;
+            case '\n':
+                result += "\\n";
+                break;
+            case '\r':
+                result += "\\r";
+                break;
+            case '\t':
+                result += "\\t";
+                break;
+            default:
+                result += c;
         }
     }
     return result;
@@ -38,20 +54,21 @@ static std::string escapeJson(const std::string& s) {
 static std::string extractValue(const std::string& json, const std::string& key) {
     std::string search = "\"" + key + "\":\"";
     size_t start = json.find(search);
-    if (start == std::string::npos) return "";
+    if (start == std::string::npos)
+        return "";
 
     start += search.length();
     size_t end = json.find("\"", start);
-    if (end == std::string::npos) return "";
+    if (end == std::string::npos)
+        return "";
 
     return json.substr(start, end - start);
 }
 
 std::string toJson(const Event& e) {
     std::ostringstream ss;
-    ss << "{\"timestamp\":\"" << formatTimestamp(e.timestamp)
-       << "\",\"component\":\"" << escapeJson(e.component)
-       << "\",\"severity\":\"" << severityToString(e.severity)
+    ss << "{\"timestamp\":\"" << formatTimestamp(e.timestamp) << "\",\"component\":\""
+       << escapeJson(e.component) << "\",\"severity\":\"" << severityToString(e.severity)
        << "\",\"message\":\"" << escapeJson(e.message) << "\"}";
     return ss.str();
 }
@@ -75,18 +92,16 @@ Event fromJson(const std::string& json) {
     }
 
     e.component = extractValue(json, "component");
-    e.severity  = stringToSeverity(extractValue(json, "severity"));
-    e.message   = extractValue(json, "message");
+    e.severity = stringToSeverity(extractValue(json, "severity"));
+    e.message = extractValue(json, "message");
     return e;
 }
 
-}  // namespace EventSerializerUtils
+} // namespace EventSerializerUtils
 
 // ---------- EventSerializer ----------
 
-std::string EventSerializer::serialize(const Event& e) {
-    return EventSerializerUtils::toJson(e);
-}
+std::string EventSerializer::serialize(const Event& e) { return EventSerializerUtils::toJson(e); }
 
 Event EventSerializer::deserialize(const std::string& s) {
     return EventSerializerUtils::fromJson(s);

@@ -1,19 +1,19 @@
 #pragma once
 
 #include "event.hpp"
-#include "iipc_factory.hpp"
 #include "ievent_serializer.hpp"
+#include "iipc_factory.hpp"
 #include "signal_helper.hpp"
-#include <memory>
-#include <vector>
-#include <string>
-#include <random>
+
 #include <atomic>
+#include <memory>
+#include <random>
+#include <string>
+#include <vector>
 
 class Producer : public IStopper {
 public:
-    Producer(std::unique_ptr<IIPCWriter> writer,
-             std::shared_ptr<IEventSerializer> serializer);
+    Producer(std::unique_ptr<IIPCWriter> writer, std::shared_ptr<IEventSerializer> serializer);
 
     Producer(const std::string& pipeName, IIPCFactory& factory);
 

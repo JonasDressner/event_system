@@ -1,6 +1,7 @@
 #pragma once
-#include <string>
+
 #include <stdexcept>
+#include <string>
 
 // Thrown by IPCReader::read() when the producer has closed the pipe.
 class PipeDisconnectedException : public std::runtime_error {
