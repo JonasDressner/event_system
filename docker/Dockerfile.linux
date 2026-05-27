@@ -14,16 +14,22 @@ FROM ubuntu:24.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# ── Install tools ────────────────────────────────────────────────────
+# ── Install base tools ───────────────────────────────────────────────
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    cmake \
-    make \
-    g++ \
-    git \
-    clang-tidy \
-    clang-format \
-    ca-certificates \
+    cmake make g++ git ca-certificates wget gnupg \
     && rm -rf /var/lib/apt/lists/*
+
+# ── Install LLVM 22 (same version as local dev environment) ──────────
+# Pinning the version avoids clang-format diff between local and CI.
+RUN wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key \
+        | tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc && \
+    echo "deb http://apt.llvm.org/noble/ llvm-toolchain-noble-22 main" \
+        > /etc/apt/sources.list.d/llvm.list && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends clang-tidy-22 clang-format-22 && \
+    ln -sf /usr/bin/clang-tidy-22    /usr/local/bin/clang-tidy   && \
+    ln -sf /usr/bin/clang-format-22  /usr/local/bin/clang-format && \
+    rm -rf /var/lib/apt/lists/*
 
 WORKDIR /workspace
 

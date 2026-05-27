@@ -22,11 +22,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install clang tools
+      # Install LLVM 22 — same version as local dev (avoids format diffs)
+      - name: Install LLVM 22 + build tools
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            cmake make g++ clang-tidy clang-format
+            cmake make g++ wget gnupg ca-certificates
+          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key \
+            | sudo tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
+          echo "deb http://apt.llvm.org/noble/ llvm-toolchain-noble-22 main" \
+            | sudo tee /etc/apt/sources.list.d/llvm.list
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            clang-tidy-22 clang-format-22
+          sudo ln -sf /usr/bin/clang-tidy-22   /usr/local/bin/clang-tidy
+          sudo ln -sf /usr/bin/clang-format-22 /usr/local/bin/clang-format
 
       # Configure without tests — only need compile_commands.json
       - name: Configure CMake
@@ -44,7 +54,7 @@ jobs:
 
       - name: clang-format
         run: |
-          find src include test -name "*.cpp" -o -name "*.hpp" | \
+          find src include test \( -name "*.cpp" -o -name "*.hpp" \) | \
             xargs clang-format --dry-run --Werror
 
   # ── Stage 2: Test on Linux (Docker image) ─────────────────────────
