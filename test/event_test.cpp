@@ -43,3 +43,12 @@ TEST_CASE("Event severity conversion", "[Event]") {
     REQUIRE(stringToSeverity("WARNING") == Severity::WARNING);
     REQUIRE(stringToSeverity("ERROR") == Severity::ERROR);
 }
+
+TEST_CASE("stringToSeverity falls back to INFO for unknown input", "[Event]") {
+    // Undocumented but defined behaviour: anything that is not WARNING or ERROR
+    // maps to INFO.  This test pins that contract so future refactors stay aware.
+    REQUIRE(stringToSeverity("") == Severity::INFO);
+    REQUIRE(stringToSeverity("UNKNOWN") == Severity::INFO);
+    REQUIRE(stringToSeverity("warning") == Severity::INFO); // case-sensitive
+    REQUIRE(stringToSeverity("error") == Severity::INFO);   // case-sensitive
+}

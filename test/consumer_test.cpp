@@ -49,6 +49,32 @@ TEST_CASE("Consumer counts ERROR events", "[Consumer]") {
     REQUIRE(stats.componentSeverityCount.at("Database").at("ERROR") == 1);
 }
 
+TEST_CASE("Consumer tracks WARNING and ERROR for the same component", "[Consumer]") {
+    Consumer consumer(std::make_unique<FakeReader>(), std::make_shared<FakeSerializer>());
+
+    Event warn;
+    warn.component = "API";
+    warn.severity = Severity::WARNING;
+    warn.message = "Slow response";
+
+    Event err;
+    err.component = "API";
+    err.severity = Severity::ERROR;
+    err.message = "Request failed";
+
+    consumer.processEvent(warn);
+    consumer.processEvent(err);
+    consumer.processEvent(warn);
+
+    auto stats = consumer.getStatistics();
+    REQUIRE(stats.warningCount == 2);
+    REQUIRE(stats.errorCount == 1);
+    REQUIRE(stats.componentSeverityCount.at("API").at("WARNING") == 2);
+    REQUIRE(stats.componentSeverityCount.at("API").at("ERROR") == 1);
+    // Both severities live under the same component key — not two separate entries.
+    REQUIRE(stats.componentSeverityCount.count("API") == 1);
+}
+
 TEST_CASE("Consumer tracks multiple components independently", "[Consumer]") {
     Consumer consumer(std::make_unique<FakeReader>(), std::make_shared<FakeSerializer>());
 
