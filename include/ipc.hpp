@@ -14,6 +14,7 @@
 #include <cstring>
 #endif
 
+// Producer side: creates the named pipe / FIFO and waits for the consumer.
 class IPCWriter : public IIPCWriter {
 public:
     explicit IPCWriter(const std::string& pipeName);
@@ -28,9 +29,11 @@ private:
     int fd_;
 #endif
 
-    void connect();
+    void createPipe();    // server role: create + wait for first client
+    void reconnect();     // called internally when consumer disconnects
 };
 
+// Consumer side: connects to the pipe created by the producer.
 class IPCReader : public IIPCReader {
 public:
     explicit IPCReader(const std::string& pipeName);
@@ -45,5 +48,5 @@ private:
     int fd_;
 #endif
 
-    void createPipe();
+    void connect();   // client role: retry-connect to producer's pipe
 };

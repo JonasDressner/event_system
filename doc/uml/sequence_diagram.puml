@@ -1,0 +1,63 @@
+@startuml sequence_diagram
+
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+skinparam roundcorner 10
+skinparam sequence {
+    ArrowColor black
+    ActorBorderColor black
+    LifeLineBorderColor black
+    ParticipantBorderColor black
+    ParticipantBackgroundColor white
+}
+
+participant ":Producer" as P
+participant "Named Pipe\n/ FIFO" as Pipe
+participant ":Consumer" as C
+
+== Startup ==
+
+P -> Pipe : create pipe\n(server side)
+P -> P    : waiting for consumer...
+
+C -> Pipe : connect\n(retry loop)
+Pipe --> P : consumer connected
+Pipe --> C : connected to producer
+
+== Event Loop ==
+
+loop every 500 ms
+    P -> P       : generateEvent()\n{ component, severity, message }
+    P -> P       : serialize() → JSON string
+    P -> Pipe    : write(json)
+    Pipe -> C    : read(json)
+    C -> C       : deserialize() → Event
+
+    alt severity < WARNING
+        C -> C   : discard event
+    else severity >= WARNING
+        C -> C   : update statistics\n(warning/error count)
+        C -> C   : print event log
+    end
+end
+
+== Statistics (every 5 s) ==
+
+C -> C : printStatistics()\nWARNINGs / ERRORs\nper component
+
+== Shutdown: Consumer exits ==
+
+C ->x Pipe : close connection
+
+P -> P     : WriteFile → BROKEN_PIPE\nreconnect()\nwaiting for new consumer...
+
+...new consumer can connect again...
+
+== Shutdown: Producer exits ==
+
+P ->x Pipe : close / destroy pipe
+
+Pipe -> C  : read() → EOF / BROKEN_PIPE
+C -> C     : "Producer has disconnected.\nShutting down."
+
+@enduml

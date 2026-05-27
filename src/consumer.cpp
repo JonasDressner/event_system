@@ -44,7 +44,12 @@ void Consumer::start() {
 
             std::this_thread::sleep_for(std::chrono::milliseconds(50));
         } catch (const std::exception& e) {
-            std::cerr << "[Consumer] Error: " << e.what() << std::endl;
+            std::string what = e.what();
+            if (what == "Producer has disconnected") {
+                std::cout << "[Consumer] Producer has disconnected. Shutting down." << std::endl;
+            } else {
+                std::cerr << "[Consumer] Error: " << what << std::endl;
+            }
             break;
         }
     }

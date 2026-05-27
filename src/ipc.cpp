@@ -2,6 +2,7 @@
 
 #include <stdexcept>
 #include <string>
+#include <iostream>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -21,7 +22,6 @@ static std::string getLastWin32Error() {
     );
 
     std::string msg = size ? std::string(buf, size) : "Unknown error";
-    // Trim trailing newline/CRLF from FormatMessageA
     while (!msg.empty() && (msg.back() == '\n' || msg.back() == '\r')) {
         msg.pop_back();
     }
@@ -36,6 +36,10 @@ static std::string getLastWin32Error() {
 #include <cstring>
 #endif
 
+// ============================================================
+//  IPCWriter  (Producer = pipe server)
+// ============================================================
+
 IPCWriter::IPCWriter(const std::string& pipeName)
     : pipeName_(pipeName)
 #ifdef _WIN32
@@ -44,7 +48,7 @@ IPCWriter::IPCWriter(const std::string& pipeName)
     , fd_(-1)
 #endif
 {
-    connect();
+    createPipe();
 }
 
 IPCWriter::~IPCWriter() {
@@ -56,6 +60,7 @@ IPCWriter::~IPCWriter() {
     if (fd_ != -1) {
         close(fd_);
     }
+    unlink(pipeName_.c_str());   // Producer created the FIFO → Producer cleans it up
 #endif
 }
 
@@ -67,6 +72,15 @@ void IPCWriter::write(const std::string& message) {
 
     DWORD bytesWritten = 0;
     if (!WriteFile(pipe_, message.c_str(), static_cast<DWORD>(message.length()), &bytesWritten, NULL)) {
+        DWORD err = GetLastError();
+        if (err == ERROR_BROKEN_PIPE || err == ERROR_NO_DATA) {
+            // Consumer disconnected — keep pipe alive and wait for next consumer
+            reconnect();
+            if (!WriteFile(pipe_, message.c_str(), static_cast<DWORD>(message.length()), &bytesWritten, NULL)) {
+                throw std::runtime_error("Failed to write after reconnect: " + getLastWin32Error());
+            }
+            return;
+        }
         throw std::runtime_error("Failed to write to pipe: " + getLastWin32Error());
     }
 #else
@@ -76,53 +90,97 @@ void IPCWriter::write(const std::string& message) {
 
     ssize_t result = ::write(fd_, message.c_str(), message.length());
     if (result < 0) {
+        if (errno == EPIPE) {
+            // Consumer disconnected — reopen and wait for next consumer
+            reconnect();
+            result = ::write(fd_, message.c_str(), message.length());
+            if (result < 0) {
+                throw std::runtime_error(std::string("Failed to write after reconnect: ") + std::strerror(errno));
+            }
+            return;
+        }
         throw std::runtime_error(std::string("Failed to write to pipe: ") + std::strerror(errno));
     }
 #endif
 }
 
-void IPCWriter::connect() {
+void IPCWriter::createPipe() {
 #ifdef _WIN32
+    // Producer creates the Named Pipe server and waits for the consumer to connect.
     std::string fullPipeName = "\\\\.\\pipe\\" + pipeName_;
-    const int maxRetries = 20;
-    const DWORD retryDelayMs = 100;
 
-    for (int attempt = 0; attempt < maxRetries; ++attempt) {
-        pipe_ = CreateFileA(
-            fullPipeName.c_str(),
-            GENERIC_WRITE,
-            0,
-            NULL,
-            OPEN_EXISTING,
-            0,
-            NULL
-        );
+    pipe_ = CreateNamedPipeA(
+        fullPipeName.c_str(),
+        PIPE_ACCESS_OUTBOUND,                               // server writes, client reads
+        PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT,
+        1,                                                  // single instance
+        4096,
+        4096,
+        0,
+        NULL
+    );
 
-        if (pipe_ != INVALID_HANDLE_VALUE) {
-            return;
-        }
-
-        DWORD err = GetLastError();
-        if (err == ERROR_FILE_NOT_FOUND || err == ERROR_PIPE_BUSY) {
-            Sleep(retryDelayMs);
-            continue;
-        }
-
-        throw std::runtime_error("Failed to open pipe for writing: " + getLastWin32Error());
+    if (pipe_ == INVALID_HANDLE_VALUE) {
+        throw std::runtime_error("Failed to create named pipe: " + getLastWin32Error());
     }
 
-    throw std::runtime_error("Failed to open pipe for writing: timeout waiting for pipe");
+    std::cout << "[IPC] Pipe created. Waiting for consumer to connect..." << std::endl;
+
+    if (!ConnectNamedPipe(pipe_, NULL)) {
+        DWORD err = GetLastError();
+        if (err != ERROR_PIPE_CONNECTED) {
+            CloseHandle(pipe_);
+            pipe_ = INVALID_HANDLE_VALUE;
+            throw std::runtime_error("Failed to connect named pipe: " + getLastWin32Error());
+        }
+    }
+
+    std::cout << "[IPC] Consumer connected." << std::endl;
 #else
+    // Producer creates the FIFO; open(O_WRONLY) blocks until consumer opens for reading.
     if (mkfifo(pipeName_.c_str(), 0666) == -1 && errno != EEXIST) {
         throw std::runtime_error(std::string("Failed to create FIFO: ") + std::strerror(errno));
     }
 
-    fd_ = open(pipeName_.c_str(), O_WRONLY);
+    std::cout << "[IPC] FIFO created. Waiting for consumer to connect..." << std::endl;
+
+    fd_ = open(pipeName_.c_str(), O_WRONLY);   // blocks until reader opens
     if (fd_ == -1) {
         throw std::runtime_error(std::string("Failed to open pipe for writing: ") + std::strerror(errno));
     }
+
+    std::cout << "[IPC] Consumer connected." << std::endl;
 #endif
 }
+
+void IPCWriter::reconnect() {
+#ifdef _WIN32
+    DisconnectNamedPipe(pipe_);
+    std::cout << "[IPC] Consumer disconnected. Waiting for new consumer to connect..." << std::endl;
+    if (!ConnectNamedPipe(pipe_, NULL)) {
+        DWORD err = GetLastError();
+        if (err != ERROR_PIPE_CONNECTED) {
+            CloseHandle(pipe_);
+            pipe_ = INVALID_HANDLE_VALUE;
+            throw std::runtime_error("Failed to reconnect named pipe: " + getLastWin32Error());
+        }
+    }
+    std::cout << "[IPC] New consumer connected." << std::endl;
+#else
+    close(fd_);
+    fd_ = -1;
+    std::cout << "[IPC] Consumer disconnected. Waiting for new consumer to connect..." << std::endl;
+    fd_ = open(pipeName_.c_str(), O_WRONLY);  // blocks until next reader opens
+    if (fd_ == -1) {
+        throw std::runtime_error(std::string("Failed to reopen pipe for writing: ") + std::strerror(errno));
+    }
+    std::cout << "[IPC] New consumer connected." << std::endl;
+#endif
+}
+
+// ============================================================
+//  IPCReader  (Consumer = pipe client)
+// ============================================================
 
 IPCReader::IPCReader(const std::string& pipeName)
     : pipeName_(pipeName)
@@ -132,7 +190,7 @@ IPCReader::IPCReader(const std::string& pipeName)
     , fd_(-1)
 #endif
 {
-    createPipe();
+    connect();
 }
 
 IPCReader::~IPCReader() {
@@ -144,7 +202,7 @@ IPCReader::~IPCReader() {
     if (fd_ != -1) {
         close(fd_);
     }
-    unlink(pipeName_.c_str());
+    // No unlink — Producer owns the FIFO lifecycle
 #endif
 }
 
@@ -158,8 +216,11 @@ bool IPCReader::read(std::string& message, int /*timeoutMs*/) {
     DWORD bytesRead = 0;
     if (!ReadFile(pipe_, buffer, sizeof(buffer) - 1, &bytesRead, NULL)) {
         DWORD err = GetLastError();
-        if (err == ERROR_PIPE_LISTENING || err == ERROR_NO_DATA || err == ERROR_BROKEN_PIPE) {
+        if (err == ERROR_PIPE_LISTENING || err == ERROR_NO_DATA) {
             return false;
+        }
+        if (err == ERROR_BROKEN_PIPE) {
+            throw std::runtime_error("Producer has disconnected");
         }
         throw std::runtime_error("Failed to read from pipe: " + getLastWin32Error());
     }
@@ -182,50 +243,80 @@ bool IPCReader::read(std::string& message, int /*timeoutMs*/) {
         }
         throw std::runtime_error(std::string("Failed to read from pipe: ") + std::strerror(errno));
     }
-
-    if (bytesRead > 0) {
-        message.assign(buffer, static_cast<size_t>(bytesRead));
-        return true;
+    if (bytesRead == 0) {
+        throw std::runtime_error("Producer has disconnected");
     }
-    return false;
+
+    message.assign(buffer, static_cast<size_t>(bytesRead));
+    return true;
 #endif
 }
 
-void IPCReader::createPipe() {
+void IPCReader::connect() {
 #ifdef _WIN32
+    // Consumer connects to the Named Pipe created by the producer.
+    // Retries until the producer has created the pipe.
     std::string fullPipeName = "\\\\.\\pipe\\" + pipeName_;
-    pipe_ = CreateNamedPipeA(
-        fullPipeName.c_str(),
-        PIPE_ACCESS_INBOUND,
-        PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT,
-        PIPE_UNLIMITED_INSTANCES,
-        4096,
-        4096,
-        0,
-        NULL
-    );
+    const int maxRetries = 50;
+    const DWORD retryDelayMs = 200;
 
-    if (pipe_ == INVALID_HANDLE_VALUE) {
-        throw std::runtime_error("Failed to create named pipe: " + getLastWin32Error());
-    }
+    std::cout << "[IPC] Connecting to producer pipe..." << std::endl;
 
-    if (!ConnectNamedPipe(pipe_, NULL)) {
-        DWORD err = GetLastError();
-        if (err != ERROR_PIPE_CONNECTED) {
-            CloseHandle(pipe_);
-            pipe_ = INVALID_HANDLE_VALUE;
-            throw std::runtime_error("Failed to connect named pipe: " + getLastWin32Error());
+    for (int attempt = 0; attempt < maxRetries; ++attempt) {
+        pipe_ = CreateFileA(
+            fullPipeName.c_str(),
+            GENERIC_READ,
+            0,
+            NULL,
+            OPEN_EXISTING,
+            0,
+            NULL
+        );
+
+        if (pipe_ != INVALID_HANDLE_VALUE) {
+            // Switch handle to message-read mode to match the server's pipe type
+            DWORD dwMode = PIPE_READMODE_MESSAGE;
+            SetNamedPipeHandleState(pipe_, &dwMode, NULL, NULL);
+            std::cout << "[IPC] Connected to producer." << std::endl;
+            return;
         }
-    }
-#else
-    unlink(pipeName_.c_str());
-    if (mkfifo(pipeName_.c_str(), 0666) == -1 && errno != EEXIST) {
-        throw std::runtime_error(std::string("Failed to create FIFO: ") + std::strerror(errno));
+
+        DWORD err = GetLastError();
+        if (err == ERROR_FILE_NOT_FOUND || err == ERROR_PIPE_BUSY) {
+            std::cout << "[IPC] Pipe not available yet. Please start the producer first. "
+                      << "Retrying... (" << (attempt + 1) << "/" << maxRetries << ")"
+                      << std::endl;
+            Sleep(retryDelayMs);
+            continue;
+        }
+
+        throw std::runtime_error("Failed to open pipe for reading: " + getLastWin32Error());
     }
 
-    fd_ = open(pipeName_.c_str(), O_RDONLY | O_NONBLOCK);
-    if (fd_ == -1) {
-        throw std::runtime_error(std::string("Failed to open FIFO for reading: ") + std::strerror(errno));
+    throw std::runtime_error("Failed to open pipe for reading: timeout waiting for producer");
+#else
+    // Consumer opens the FIFO created by the producer.
+    // Retries until the producer has created the FIFO.
+    const int maxRetries = 50;
+
+    std::cout << "[IPC] Connecting to producer pipe..." << std::endl;
+
+    for (int attempt = 0; attempt < maxRetries; ++attempt) {
+        fd_ = open(pipeName_.c_str(), O_RDONLY | O_NONBLOCK);
+        if (fd_ != -1) {
+            std::cout << "[IPC] Connected to producer." << std::endl;
+            return;
+        }
+        if (errno == ENOENT) {
+            std::cout << "[IPC] Pipe not available yet. Please start the producer first. "
+                      << "Retrying... (" << (attempt + 1) << "/" << maxRetries << ")"
+                      << std::endl;
+            usleep(200000);   // 200 ms
+            continue;
+        }
+        throw std::runtime_error(std::string("Failed to open pipe for reading: ") + std::strerror(errno));
     }
+
+    throw std::runtime_error("Failed to open pipe for reading: timeout waiting for producer");
 #endif
 }
