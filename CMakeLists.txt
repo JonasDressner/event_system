@@ -26,15 +26,7 @@ if(WIN32)
     message(STATUS "Building for Windows")
 else()
     message(STATUS "Building for Linux")
-    target_link_libraries(EventSystem      pthread)
-    target_link_libraries(EventSystemTests pthread)
-endif()
-
-# Compiler flags
-if(MSVC)
-    add_compile_options(/W4 /std:c++17)
-else()
-    add_compile_options(-Wall -Wextra -Wpedantic)
+    target_link_libraries(EventSystem PRIVATE pthread)
 endif()
 
 include(FetchContent)
@@ -57,12 +49,25 @@ add_executable(EventSystemTests
     test/consumer_test.cpp
 )
 
-target_link_libraries(EventSystemTests PRIVATE Catch2::Catch2WithMain)
-target_link_libraries(EventSystemTests PRIVATE EventSystemLib)
+target_link_libraries(EventSystemTests PRIVATE Catch2::Catch2WithMain EventSystemLib)
 target_include_directories(EventSystemTests PRIVATE
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/test
 )
+
+# Compiler warnings — only for our own targets, not for Catch2/FetchContent
+if(MSVC)
+    target_compile_options(EventSystemLib  PRIVATE /W4)
+    target_compile_options(EventSystem     PRIVATE /W4)
+    target_compile_options(EventSystemTests PRIVATE /W4)
+else()
+    target_compile_options(EventSystemLib  PRIVATE -Wall -Wextra -Wpedantic)
+    target_compile_options(EventSystem     PRIVATE -Wall -Wextra -Wpedantic)
+    target_compile_options(EventSystemTests PRIVATE -Wall -Wextra -Wpedantic)
+    if(NOT WIN32)
+        target_link_libraries(EventSystemTests PRIVATE pthread)
+    endif()
+endif()
 
 catch_discover_tests(EventSystemTests
     REPORT_ZERO_TESTS

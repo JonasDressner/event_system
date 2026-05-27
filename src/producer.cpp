@@ -58,7 +58,8 @@ void Producer::start() {
             std::cout << "[" << timestampToString(evt.timestamp) << "]"
                       << " [Producer] Event #" << (++eventCount)
                       << " sent: " << evt.component
-                      << " [" << severityToString(evt.severity) << "]"
+                      << " [" << severityToString(evt.severity) << "] "
+                      << evt.message
                       << std::endl;
 
             std::this_thread::sleep_for(std::chrono::milliseconds(500));

@@ -6,12 +6,6 @@
 
 #ifdef _WIN32
 #include <windows.h>
-#else
-#include <unistd.h>
-#include <fcntl.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <cstring>
 #endif
 
 // Producer side: creates the named pipe / FIFO and waits for the consumer.
