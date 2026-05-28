@@ -13,6 +13,10 @@
 \usepackage{xcolor}
 \usepackage{booktabs}
 \usepackage{tikz}
+\usepackage[normalem]{ulem}
+\usepackage{hyperref}
+\hypersetup{colorlinks=true, urlcolor=blue!60!black, linkcolor=black, citecolor=black}
+\setbeamertemplate{caption}[numbered]
 
 % ── C++ Code-Style ─────────────────────────────────────────────────────────
 \lstdefinestyle{cpp}{
@@ -41,10 +45,10 @@
 
 % ── Titelseite ─────────────────────────────────────────────────────────────
 \title{Event System -- IPC Producer/Consumer}
-\subtitle{Bewerbungsaufgabe -- Embedded Systems Developer}
+\subtitle{Bewerbung bei SEW-EURODRIVE -- Arbeitssprobe}
 \author{Jonas Dressner}
-\institute{Bewerbung bei SEW-EURODRIVE}
-\date{31.05.2026}
+%\institute{Bewerbung bei SEW-EURODRIVE}
+\date{02.06.2026}
 
 % ══════════════════════════════════════════════════════════════════════════
 \begin{document}
@@ -63,16 +67,101 @@
 \section{Aufgabenstellung}
 
 \begin{frame}{Aufgabenstellung}
-\begin{itemize}
-    \item Design einer \textbf{Producer-Consumer-Applikation} für Eventaustausch
-    \item Producer und Consumer laufen in \textbf{getrennten Prozessen}
-    \item \textbf{Kommunikationsschicht muss austauschbar sein} (modulares Design)
-    \item \textbf{IPC mit Systemfunktionen}: Windows oder Linux
-    \item Implementierung in \textbf{C++17}, kompilierbarer Source Code
-    \vspace{0.5em}
-    \item \textbf{Producer} generiert Events: Zeitstempel, Komponente, Severity, Nachricht
-    \item \textbf{Consumer} filtert ab \texttt{WARNING}, aggregiert und gibt Statistiken aus
-\end{itemize}
+    \centering
+
+    % ── Hauptdiagramm ────────────────────────────────────────────────
+    \resizebox{0.82\textwidth}{!}{%
+    \begin{tikzpicture}[
+        proc/.style={rectangle, rounded corners=6pt,
+                     draw=#1!70, fill=#1!12,
+                     minimum width=2.8cm, minimum height=1.8cm,
+                     align=center, font=\large\bfseries},
+        ch/.style={rectangle, rounded corners=4pt,
+                   draw=gray!50, fill=gray!10, dashed,
+                   minimum width=2.4cm, minimum height=1.0cm,
+                   align=center, font=\normalsize},
+        evbox/.style={rectangle, rounded corners=3pt,
+                      draw=#1!60, fill=#1!10,
+                      minimum width=2.2cm, minimum height=0.65cm,
+                      align=center, font=\normalsize\bfseries, text=#1!80}
+    ]
+        \node[proc=blue]  (P) at (0,0)    {Producer\\\normalsize\mdseries Prozess 1};
+        \node[ch]         (C) at (5.5,0)  {Named Pipe\\FIFO};
+        \node[proc=teal]  (K) at (11.0,0) {Consumer\\\normalsize\mdseries Prozess 2};
+
+        \draw[->, line width=1.5pt, blue!60]  (P.east) -- (C.west);
+        \draw[->, line width=1.5pt, teal!60]  (C.east) -- (K.west);
+
+        % Event-Paket: Felder oben, Severity vertikal unten
+        \node[font=\normalsize\bfseries] at (5.5, 5.6) {Event};
+        \draw[draw=black!30, rounded corners=5pt, dashed]
+            (2.8, 1.3) rectangle (8.2, 5.3);
+
+        % Felder des Events
+        \node[font=\small, text=black!75, align=center] at (5.5, 4.8)
+            {\texttt{timestamp} \textbullet\ \texttt{component}\\[4pt]
+             \texttt{severity}  \textbullet\ \texttt{message}};
+
+        % Trennlinie
+        \draw[gray!30] (3.0, 4.25) -- (8.0, 4.25);
+
+        % Severity-Label
+        \node[font=\small\bfseries, text=black!60] at (5.5, 3.9) {Severity};
+
+        % Severity-Boxen vertikal gestapelt
+        \node[evbox=red]    at (5.5, 3.35) {ERROR};
+        \node[evbox=orange] at (5.5, 2.65) {WARNING};
+        \node[evbox=gray, text=gray!50, draw=gray!30, fill=gray!6]
+                            at (5.5, 1.95) {\sout{INFO}};
+
+        % Pfeil von Event-Paket zur Pipe (mit Abstand)
+        \draw[->, gray!50, thin] (5.5, 1.3) -- (C.north);
+
+        % Consumer: kombinierte Annotation über dem Consumer-Block
+        \node[draw=gray!40, fill=gray!5, dashed, rounded corners=3pt,
+              font=\small\itshape, text=gray!70, align=center, inner sep=5pt]
+              (consinfo) at (11.0, 2.4)
+              {filtert \sout{INFO}\\[3pt] Statistiken alle 5\,s};
+        \draw[->, gray!40, thin] (consinfo.south) -- (K.north);
+    \end{tikzpicture}%
+    }
+
+    \vspace{0.4em}
+    % ── Stichpunkte vertikal ────────────────────────────────────────────
+    \begin{itemize}
+        \item \textbf{Producer und Consumer} laufen in getrennten Prozessen und kommunizieren via IPC
+        \item \textbf{Kommunikationsschicht austauschbar} -- neue IPC-Implementierung ohne Änderung an der Business Logic
+        \item IPC mit \textbf{Systemfunktionen} (Windows oder Linux)
+    \end{itemize}
+\end{frame}
+
+% ════════════════════════════════════════════════════════════════════════
+\section{Umsetzung}
+
+\begin{frame}{Umsetzung -- Überblick}
+\begin{columns}[T]
+    \column{0.48\textwidth}
+    \textbf{Technologie-Stack}
+    \begin{itemize}
+        \item Implementiert in \textbf{C++17}
+        \item \textbf{CMake 3.11+}: plattformübergreifendes Build-System
+        \item \textbf{Windows} (MinGW/MSYS2) und \textbf{Linux} (GCC)
+        \item \textbf{Catch2}: 12 Unit-Tests
+    \end{itemize}
+
+    \column{0.48\textwidth}
+    \textbf{Qualitätssicherung}
+    \begin{itemize}
+        \item \textbf{GitHub Actions CI}: Style-Check, Build, Tests
+        \item \textbf{clang-tidy}: statische Analyse (C++17-Regeln)
+        \item \textbf{clang-format}: einheitlicher Code-Stil
+        \item \textbf{PlantUML}: Klassen- und Komponentendiagramm
+    \end{itemize}
+
+\end{columns}
+
+\vspace{1.2em}
+\small\textbf{Repository:}~\href{https://github.com/JonasDressner/event_system}{\texttt{github.com/JonasDressner/event\_system}}
 \end{frame}
 
 % ════════════════════════════════════════════════════════════════════════
@@ -81,25 +170,24 @@
 \begin{frame}{Architekturübersicht}
 \begin{columns}[T]
     \column{0.52\textwidth}
-    \textbf{Schichten (top $\to$ bottom)}
+    \textbf{Hauptkomponenten}
     \begin{itemize}
-        \item \texttt{main.cpp} -- Entry Point, CLI-Parsing
-        \item \texttt{IIPCFactory} -- Abstract Factory
-        \item \texttt{Producer} / \texttt{Consumer} -- Business Logic
-        \item \texttt{IIPCWriter} / \texttt{IIPCReader} -- IPC-Abstraktion
-        \item \texttt{IPCWriter} / \texttt{IPCReader} -- Plattform-Impl.
-        \item \texttt{IEventSerializer} -- Serialisierungs-Abstraktion
-        \item \texttt{Event} / \texttt{Severity} -- Domain
+        \item \texttt{main.cpp}: Entry Point, CLI-Parsing
+        \item \texttt{Producer} / \texttt{Consumer}: Business Logic
+        \item \texttt{IIPCFactory}: Abstract Factory (Transport-Auswahl)
+        \item \texttt{IIPCWriter} / \texttt{IIPCReader}: IPC-Abstraktion
+        \item \texttt{IPCWriter} / \texttt{IPCReader}: Plattform-Impl.
+        \item \texttt{IEventSerializer}: Serialisierungs-Abstraktion
+        \item \texttt{Event} / \texttt{Severity}: Domain-Modell
     \end{itemize}
 
     \column{0.45\textwidth}
-    \textbf{Startsequenz}
+    \textbf{Ablauf}
     \begin{enumerate}
-        \item \texttt{--producer} starten
-        \item Pipe anlegen (\textit{Server-Seite})
-        \item \texttt{--consumer} starten
-        \item Consumer verbindet sich
-        \item Eventaustausch läuft
+        \item[\textbf{1.}] \texttt{--producer} starten \hfill \textit{\small (Nutzer)}
+        \item[\textbf{2.}] Pipe anlegen, auf Consumer warten \hfill \textit{\small (automatisch)}
+        \item[\textbf{3.}] \texttt{--consumer} starten \hfill \textit{\small (Nutzer)}
+        \item[\textbf{4.}] Verbindung aufbauen, Eventaustausch läuft \hfill \textit{\small (automatisch)}
     \end{enumerate}
     \vspace{0.5em}
     \small Transport wählbar: \texttt{--transport pipe}\\
@@ -109,66 +197,60 @@
 
 % ── UML Klassendiagramm ─────────────────────────────────────────────────
 \begin{frame}{UML -- Klassendiagramm}
-\centering
-\includegraphics[width=0.95\textwidth]{class_diagram.png}
+\begin{figure}
+    \centering
+    \includegraphics[width=0.95\textwidth]{class_diagram_simple.png}
+    \caption{Klassendiagramm -- öffentliche Schnittstellen und Beziehungen}
+\end{figure}
 \end{frame}
 
 % ── UML Komponentendiagramm ─────────────────────────────────────────────
 \begin{frame}{UML -- Komponentendiagramm}
-\centering
-\includegraphics[width=0.95\textwidth]{component_diagram.png}
+\begin{figure}
+    \centering
+    \includegraphics[width=0.95\textwidth]{component_diagram.png}
+    \caption{Komponentendiagramm -- Abhängigkeiten und Kommunikationsfluss}
+\end{figure}
 \end{frame}
 
 % ════════════════════════════════════════════════════════════════════════
 \section{Designentscheidungen}
 
 \begin{frame}{Designentscheidungen -- Interfaces \& Patterns}
-\begin{itemize}
+\begin{itemize}\setlength{\itemsep}{0.35em}
     \item \textbf{Abstract Factory Pattern}\\
-          \texttt{IIPCFactory} $\rightarrow$ \texttt{PipeIPCFactory}\\
-          Transport per \texttt{--transport pipe} wählbar -- neue Impl.\ ohne Änderung an Business Logic
+          \texttt{IIPCFactory} $\rightarrow$ \texttt{PipeIPCFactory}: neue Transportimpl.\ ohne Änderung an Business Logic
 
-    \vspace{0.4em}
     \item \textbf{Interface Segregation}\\
-          \texttt{IIPCWriter}, \texttt{IIPCReader}, \texttt{IIPCFactory}, \texttt{IEventSerializer}, \texttt{IStopper}\\
+          5 Interfaces: \texttt{IIPCWriter/Reader/Factory}, \texttt{IEventSerializer}, \texttt{IStopper}\\
           Klassen kennen nur die Schnittstellen, die sie tatsächlich brauchen
 
-    \vspace{0.4em}
     \item \textbf{Dependency Injection (Konstruktor)}\\
-          Producer/Consumer erhalten \texttt{unique\_ptr<IIPCWriter/Reader>} via Konstruktor\\
-          $\Rightarrow$ in Unit-Tests einfach durch Mock ersetzbar
+          \texttt{unique\_ptr<IIPCWriter/Reader>}, \texttt{shared\_ptr<IEventSerializer>} via Konstruktor\\
+          $\Rightarrow$ in Tests einfach durch Fakes ersetzbar
 
-    \vspace{0.4em}
     \item \textbf{Producer = Named-Pipe-Server}\\
-          Producer legt die Pipe an und wartet auf Clients\\
-          $\Rightarrow$ natürlicher Startpunkt, Consumer kann jederzeit verbinden/trennen
+          Legt Pipe an, wartet auf Consumer $\Rightarrow$ Consumer kann jederzeit verbinden/trennen
 \end{itemize}
 \end{frame}
 
 \begin{frame}{Designentscheidungen -- Robustheit}
-\begin{itemize}
+\begin{itemize}\setlength{\itemsep}{0.35em}
     \item \textbf{Typed Exception: \texttt{PipeDisconnectedException}}\\
-          Statt fragiler String-Vergleiche -- klare Fehlerklassifizierung per \texttt{catch}-Block
+          Klare Fehlerklassifizierung per \texttt{catch}-Block statt fragiler String-Vergleiche
 
-    \vspace{0.4em}
     \item \textbf{Reconnect-Logik im Producer}\\
-          \texttt{ERROR\_BROKEN\_PIPE} $\rightarrow$ \texttt{DisconnectNamedPipe} + \texttt{ConnectNamedPipe}\\
-          Producer läuft weiter; neuer Consumer kann sich jederzeit neu verbinden
+          Bei Disconnect: \texttt{DisconnectNamedPipe} + \texttt{ConnectNamedPipe}\\
+          Producer läuft weiter, Consumer kann sich neu verbinden
 
-    \vspace{0.4em}
     \item \textbf{Thread-Sicherheit}\\
-          \texttt{std::atomic<bool> running\_} für Stop-Flag (signal-safe)\\
-          \texttt{std::mutex stats\_mutex\_} schützt \texttt{Statistics}-Struktur
+          \texttt{std::atomic<bool>} für Stop-Flag, \texttt{std::mutex} schützt Statistics
 
-    \vspace{0.4em}
     \item \textbf{Signal-Handling via \texttt{IStopper}}\\
-          \texttt{SIGINT}/\texttt{SIGTERM} rufen \texttt{stop()} auf dem globalen Instanz-Pointer auf\\
-          $\Rightarrow$ sauberer Shutdown ohne \texttt{exit()} oder globale Flags
+          \texttt{SIGINT}/\texttt{SIGTERM} $\Rightarrow$ \texttt{stop()} -- sauberer Shutdown ohne \texttt{exit()}
 
-    \vspace{0.4em}
-    \item \textbf{Timeout-Implementierung}\\
-          Windows: \texttt{PeekNamedPipe}-Loop mit \texttt{GetTickCount64}\\
-          Linux: \texttt{poll()} mit \texttt{struct pollfd}
+    \item \textbf{Timeout}\\
+          Windows: \texttt{PeekNamedPipe}-Loop \quad Linux: \texttt{poll(struct pollfd)}
 \end{itemize}
 \end{frame}
 
@@ -281,7 +363,7 @@ enum class Severity {
 }
 \end{lstlisting}
     \vspace{0.3em}
-    \small \textbf{Kein externe Bibliothek} --\\
+    \small \textbf{Keine externe Bibliothek} --\\
     manuelle Serialisierung via\\
     \texttt{EventSerializerUtils::toJson}\\
     \texttt{EventSerializerUtils::fromJson}
@@ -291,27 +373,47 @@ enum class Severity {
 % ════════════════════════════════════════════════════════════════════════
 \section{Mögliche Erweiterungen}
 
-\begin{frame}{Erweiterung -- Logging-System}
+\begin{frame}[fragile]{Erweiterung -- Logging-System}
 \begin{columns}[T]
-    \column{0.48\textwidth}
-    \textbf{Konzept: \texttt{ILogger}-Interface}
-    \begin{itemize}
-        \item Neue Schnittstelle analog zu \texttt{IEventSerializer}
-        \item Methode \texttt{log(Severity, string)}
-        \item Per Dependency Injection in Producer und Consumer injizierbar
-        \item Gleiche \texttt{Severity}-Enum wie Event-Domain
-    \end{itemize}
+    \column{0.50\textwidth}
+    \textbf{Interface (analog zu \texttt{IEventSerializer})}
+\begin{lstlisting}[style=cpp]
+struct ILogger {
+  virtual ~ILogger() = default;
+  virtual void log(Severity sev,
+                   const string& msg) = 0;
+};
+\end{lstlisting}
+    \vspace{0.2em}
+    \textbf{Einbindung per Dependency Injection}
+\begin{lstlisting}[style=cpp]
+Producer::Producer(
+  unique_ptr<IIPCWriter> writer,
+  shared_ptr<IEventSerializer> ser,
+  shared_ptr<ILogger> logger)  // neu
+  : logger_(std::move(logger)) { ... }
+\end{lstlisting}
 
-    \column{0.48\textwidth}
-    \textbf{Implementierungen}
-    \begin{itemize}
-        \item \texttt{ConsoleLogger} -- Ausgabe auf \texttt{stdout}
-        \item \texttt{FileLogger} -- persistente Logdatei
-        \item \texttt{RotatingFileLogger} -- Log-Rotation nach Dateigröße
-        \item \texttt{NullLogger} -- kein Output (Tests)
-    \end{itemize}
+    \column{0.47\textwidth}
+    \textbf{Verwendung im Code}
+\begin{lstlisting}[style=cpp]
+// Producer::start()
+logger_->log(Severity::INFO,
+  "Event sent: " + evt.component);
+
+// Consumer::processEvent()
+logger_->log(evt.severity,
+  evt.component + ": " + evt.message);
+\end{lstlisting}
     \vspace{0.3em}
-    \small Austausch ohne Codeänderung an Business Logic -- selbes Muster wie Transport-Schicht
+    \textbf{Implementierungen}
+    \begin{itemize}\small
+        \item \texttt{ConsoleLogger}: \texttt{stdout}
+        \item \texttt{FileLogger}: persistente Datei
+        \item \texttt{NullLogger}: kein Output (Tests)
+    \end{itemize}
+    \vspace{0.2em}
+    \small\textit{Kein \texttt{if/switch} nötig, gleiches Muster wie Transport-Schicht}
 \end{columns}
 \end{frame}
 
@@ -351,7 +453,27 @@ enum class Severity {
     \vspace{2em}
     {\Huge Vielen Dank!}\\[1.5em]
     {\large Fragen?}\\[2em]
-    \small Source Code + Dokumentation: \texttt{event\_system/}
+    \small Source Code \& Dokumentation:\\[0.3em]
+    \href{https://github.com/JonasDressner/event_system}{\texttt{github.com/JonasDressner/event\_system}}
+\end{frame}
+
+% ════════════════════════════════════════════════════════════════════════
+% Appendix -- nicht im Inhaltsverzeichnis, Foliennummer wird zurückgesetzt
+% ════════════════════════════════════════════════════════════════════════
+\appendix
+
+\section*{Anhang}
+
+\begin{frame}{Anhang}
+    \centering
+    \vspace{1em}
+    {\large Vollständiges Klassendiagramm}
+\end{frame}
+
+% ── Vollständiges Klassendiagramm ────────────────────────────────────────
+\begin{frame}{UML -- Klassendiagramm (vollständig)}
+\centering
+\includegraphics[width=0.95\textwidth]{class_diagram.png}
 \end{frame}
 
 \end{document}

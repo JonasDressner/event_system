@@ -26,8 +26,10 @@ skinparam ranksep 40
 package "Entry Point" {
     component "main.cpp" as Main
     note right of Main
-        --transport pipe  (default)
-        --producer / --consumer
+        Argumente:
+        - -producer | - -consumer
+        - -transport pipe  (Standard)
+        [pipe_name]  (optional)
     end note
 }
 
@@ -42,6 +44,17 @@ package "Factory Layer" {
 package "Business Logic" {
     component "Producer\n(Pipe Server)" as Producer
     component "Consumer\n(Pipe Client)" as Consumer
+
+    note right of Producer
+        cComponents / cSeverities / cMessages
+        als static constexpr arrays
+    end note
+
+    note right of Consumer
+        Statistics { warningCount,
+          errorCount, componentSeverityCount }
+        Statusausgabe alle 5 s
+    end note
 }
 
 ' ── IPC Abstraction ──────────────────────────────
@@ -53,7 +66,7 @@ package "IPC Abstraction" {
 ' ── Serialization ────────────────────────────────
 package "Serialization" {
     interface "IEventSerializer" as ISerializer
-    component "EventSerializer\n(JSON)" as Serializer
+    component "EventSerializer\n(hand-rolled JSON)" as Serializer
     Serializer -up-> ISerializer : implements
 }
 
@@ -66,16 +79,19 @@ package "Domain" {
 
 ' ── Platform IPC ─────────────────────────────────
 package "Platform IPC Implementation" {
-    component "IPCWriter\nWindows: CreateNamedPipeA\nLinux: mkfifo + open(O_WRONLY)" as IPCWriter
-    component "IPCReader\nWindows: CreateFileA\nLinux: open(O_RDONLY)" as IPCReader
+    component "IPCWriter\nWindows: CreateNamedPipeA\nLinux:   mkfifo + open(O_WRONLY)" as IPCWriter
+    component "IPCReader\nWindows: CreateFileA\nLinux:   open(O_RDONLY | O_NONBLOCK)" as IPCReader
+    component "PipeDisconnectedException" as PipeEx
+
     IPCWriter -up-> IWriter : implements
     IPCReader -up-> IReader : implements
+    IPCReader ..> PipeEx    : <<throws>>
 }
 
 ' ── Relationships ────────────────────────────────
 
 ' main selects factory and wires everything
-Main     -down-> IFactory       : createFactory(--transport)
+Main     -down-> IFactory       : createFactory(transport)
 Main     -down-> Producer       : runProducer(name, factory)
 Main     -down-> Consumer       : runConsumer(name, factory)
 
@@ -94,5 +110,6 @@ Producer ..> EventModel         : generates
 Consumer -down-> IReader        : read(json)
 Consumer -down-> ISerializer    : deserialize(json)
 Consumer ..> EventModel         : processes
+Consumer ..> PipeEx             : catches
 
 @enduml

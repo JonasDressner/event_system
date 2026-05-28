@@ -25,15 +25,15 @@ public:
 private:
     // Compile-time tables — sizes drive the distributions automatically.
     // To add a component or message, only extend the array; nothing else changes.
-    static constexpr std::array<std::string_view, 5> kComponents = {"Database",
+    static constexpr std::array<std::string_view, 5> cComponents = {"Database",
                                                                     "API",
                                                                     "Cache",
                                                                     "Auth",
                                                                     "Logging"};
-    static constexpr std::array<Severity, 3> kSeverities = {Severity::INFO,
+    static constexpr std::array<Severity, 3> cSeverities = {Severity::INFO,
                                                             Severity::WARNING,
                                                             Severity::ERROR};
-    static constexpr std::array<std::string_view, 5> kMessages = {
+    static constexpr std::array<std::string_view, 5> cMessages = {
         "Operation completed successfully",
         "Processing request",
         "Performance degradation detected",

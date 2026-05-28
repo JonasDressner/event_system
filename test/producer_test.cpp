@@ -19,7 +19,7 @@ TEST_CASE("Producer generates events", "[Producer]") {
 }
 
 TEST_CASE("Producer component is always from the known table", "[Producer]") {
-    // Mirrors Producer::kComponents — if the table changes, this test catches it.
+    // Mirrors Producer::cComponents — if the table changes, this test catches it.
     static const std::set<std::string> kValidComponents = {
         "Database", "API", "Cache", "Auth", "Logging"};
 

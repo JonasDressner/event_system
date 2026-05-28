@@ -16,9 +16,9 @@ Producer::Producer(std::unique_ptr<IIPCWriter> writer, std::shared_ptr<IEventSer
       serializer_(std::move(serializer)),
       running_(true),
       gen_(std::random_device{}()),
-      severityDist_(0, static_cast<int>(kSeverities.size()) - 1),
-      componentDist_(0, static_cast<int>(kComponents.size()) - 1),
-      messageDist_(0, static_cast<int>(kMessages.size()) - 1) {}
+      severityDist_(0, static_cast<int>(cSeverities.size()) - 1),
+      componentDist_(0, static_cast<int>(cComponents.size()) - 1),
+      messageDist_(0, static_cast<int>(cMessages.size()) - 1) {}
 
 Producer::Producer(const std::string& pipeName, IIPCFactory& factory)
     : Producer(factory.createWriter(pipeName), std::make_shared<EventSerializer>()) {}
@@ -28,9 +28,9 @@ Producer::Producer(const std::string& pipeName, IIPCFactory& factory)
 Event Producer::generateEvent() {
     Event evt;
     evt.timestamp = std::chrono::system_clock::now();
-    evt.component = std::string(kComponents[componentDist_(gen_)]);
-    evt.severity = kSeverities[severityDist_(gen_)];
-    evt.message = std::string(kMessages[messageDist_(gen_)]);
+    evt.component = std::string(cComponents[componentDist_(gen_)]);
+    evt.severity = cSeverities[severityDist_(gen_)];
+    evt.message = std::string(cMessages[messageDist_(gen_)]);
     return evt;
 }
 

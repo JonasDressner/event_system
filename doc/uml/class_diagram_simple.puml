@@ -1,63 +1,47 @@
-@startuml class_diagram
+@startuml class_diagram_simple
 
 top to bottom direction
 skinparam classAttributeIconSize 0
 skinparam shadowing false
-skinparam roundcorner 8
+skinparam roundcorner 10
 skinparam packageStyle rectangle
 
 skinparam class {
     BackgroundColor white
     BorderColor #444444
-    ArrowColor #333333
-    FontSize 16
-    AttributeFontSize 14
-    StereotypeFontSize 13
+    FontSize 18
+    AttributeFontSize 16
+    StereotypeFontSize 14
 }
-
-' Realisierung (implements) → blau
-skinparam ArrowColor<<realize>> #2980b9
-' Komposition / Aggregation → dunkelgrau
-skinparam ArrowColor<<compose>> #555555
-
 skinparam interface {
     BackgroundColor #e8f4fb
     BorderColor #2980b9
-    FontSize 16
-    AttributeFontSize 14
+    FontSize 18
+    AttributeFontSize 16
 }
 skinparam package {
     BackgroundColor #fafafa
     BorderColor #aaaaaa
     FontStyle bold
-    FontSize 18
+    FontSize 20
 }
 skinparam enum {
     BackgroundColor #fff8e1
     BorderColor #f39c12
-    FontSize 15
-    AttributeFontSize 14
+    FontSize 17
+    AttributeFontSize 15
 }
 
-skinparam nodesep 70
-skinparam ranksep 60
+skinparam ArrowColor #333333
+skinparam nodesep 60
+skinparam ranksep 55
 
 ' ═══════════════════════════════════════════
 '  Entry Point
 ' ═══════════════════════════════════════════
 package "Entry Point" {
-    class AppConfig <<struct>> {
-        + mode : Mode
-        + pipeName : string
-        + transport : string
-    }
-
     class "main.cpp" as Main <<module>> {
         + main() : int
-        + parseArgs() : AppConfig
-        + createFactory() : IIPCFactory
-        + runProducer() : void
-        + runConsumer() : void
     }
 }
 
@@ -66,38 +50,16 @@ package "Entry Point" {
 ' ═══════════════════════════════════════════
 package "Business Logic" {
     class Producer {
-        - {static} cComponents : array<string_view, 5> {constexpr}
-        - {static} cSeverities : array<Severity, 3> {constexpr}
-        - {static} cMessages : array<string_view, 5> {constexpr}
-        - writer_ : unique_ptr<IIPCWriter>
-        - serializer_ : shared_ptr<IEventSerializer>
-        - running_ : atomic<bool>
-        - severityDist_ : uniform_int_distribution
-        - componentDist_ : uniform_int_distribution
-        - messageDist_ : uniform_int_distribution
-        --
-        + Producer(writer, serializer)
-        + Producer(pipeName, factory)
         + generateEvent() : Event
         + start() : void
         + stop() : void
     }
 
     class Consumer {
-        - reader_ : unique_ptr<IIPCReader>
-        - serializer_ : shared_ptr<IEventSerializer>
-        - running_ : atomic<bool>
-        - stats_ : Statistics
-        - statsMutex_ : mutex {mutable}
-        - lastStatsTime_ : steady_clock::time_point
-        --
-        + Consumer(reader, serializer)
-        + Consumer(pipeName, factory)
         + start() : void
         + stop() : void
-        + processEvent(evt : Event) : void
+        + processEvent(evt) : void
         + getStatistics() : Statistics
-        - printStatistics() : void
     }
 }
 
@@ -108,23 +70,19 @@ package "Interfaces" {
     interface IStopper {
         + {abstract} stop() : void
     }
-
     interface IIPCWriter {
         + {abstract} write(msg) : void
     }
-
     interface IIPCReader {
         + {abstract} read(msg, timeoutMs) : bool
     }
-
     interface IIPCFactory {
         + {abstract} createWriter(name) : IIPCWriter
         + {abstract} createReader(name) : IIPCReader
     }
-
     interface IEventSerializer {
-        + {abstract} serialize(e : Event) : string
-        + {abstract} deserialize(s : string) : Event
+        + {abstract} serialize(e) : string
+        + {abstract} deserialize(s) : Event
     }
 }
 
@@ -133,59 +91,38 @@ package "Interfaces" {
 ' ═══════════════════════════════════════════
 package "Domain" {
     class Event <<struct>> {
-        + timestamp : system_clock::time_point
+        + timestamp : time_point
         + component : string
         + severity : Severity
         + message : string
     }
 
     enum Severity {
-        INFO = 0
-        WARNING = 1
-        ERROR = 2
-    }
-
-    class "event.cpp" as EventUtils <<utility>> {
-        + severityToString(sev) : string
-        + stringToSeverity(str) : Severity
-        + timestampToString(tp) : string
+        INFO
+        WARNING
+        ERROR
     }
 
     class Statistics <<struct>> {
         + warningCount : int
         + errorCount : int
-        + componentSeverityCount : map<string, map<string, int>>
+        + componentSeverityCount : map
     }
 }
 
 ' ═══════════════════════════════════════════
 '  IPC Implementation
 ' ═══════════════════════════════════════════
-package "IPC Implementation\n(Named Pipe / FIFO)" {
+package "IPC\n(Named Pipe / FIFO)" {
     class IPCWriter {
-        - pipeName_ : string
-        - pipe_ / fd_ : HANDLE / int
-        --
         + write(msg) : void
-        - createPipe() : void
-        - reconnect() : void
     }
-
     class IPCReader {
-        - pipeName_ : string
-        - pipe_ / fd_ : HANDLE / int
-        --
         + read(msg, timeoutMs) : bool
-        - connect() : void
     }
-
     class PipeIPCFactory {
         + createWriter(name) : IIPCWriter
         + createReader(name) : IIPCReader
-    }
-
-    class PipeDisconnectedException {
-        + PipeDisconnectedException()
     }
 }
 
@@ -194,13 +131,8 @@ package "IPC Implementation\n(Named Pipe / FIFO)" {
 ' ═══════════════════════════════════════════
 package "Serialization" {
     class EventSerializer {
-        + serialize(e : Event) : string
-        + deserialize(s : string) : Event
-    }
-
-    class "EventSerializerUtils" as SerializerUtils <<utility>> {
-        + toJson(e : Event) : string
-        + fromJson(json : string) : Event
+        + serialize(e) : string
+        + deserialize(s) : Event
     }
 }
 
@@ -208,7 +140,6 @@ package "Serialization" {
 '  Relationships
 ' ═══════════════════════════════════════════
 
-' Interface implementations
 IStopper         <|..  Producer
 IStopper         <|..  Consumer
 IIPCWriter       <|..  IPCWriter
@@ -216,33 +147,20 @@ IIPCReader       <|..  IPCReader
 IIPCFactory      <|..  PipeIPCFactory
 IEventSerializer <|..  EventSerializer
 
-' Exception hierarchy
-PipeDisconnectedException --|> "std::runtime_error"
-IPCReader  ..>  PipeDisconnectedException  : <<throws>>
-
-' Factory creates implementations
 PipeIPCFactory  ..>  IPCWriter  : <<creates>>
 PipeIPCFactory  ..>  IPCReader  : <<creates>>
 
-' Producer / Consumer use interfaces
 Producer  *--  IIPCWriter
 Producer  o--  IEventSerializer
 Consumer  *--  IIPCReader
 Consumer  o--  IEventSerializer
 Consumer  *--  Statistics
 
-' Serialization internals
-EventSerializer ..> SerializerUtils : delegates
+Event  -->  Severity
+Producer  ..>  Event : generates
+Consumer  ..>  Event : processes
 
-' Domain
-Event       -->  Severity
-EventUtils  ..>  Severity
-Producer   ..>   Event : generates
-Consumer   ..>   Event : processes
-
-' Entry point
 Main  ..>  IIPCFactory
-Main  ..>  AppConfig
 Main  ..>  Producer
 Main  ..>  Consumer
 
