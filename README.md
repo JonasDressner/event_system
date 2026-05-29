@@ -161,19 +161,32 @@ cmake --build build
 > **Note:** The first build downloads Catch2 automatically — an internet
 > connection is required.
 
+To build **without tests** (no internet required, faster):
+
+```bash
+cmake -B build -DBUILD_TESTS=OFF
+cmake --build build
+```
+
 ## Usage
 
 ```bash
 # Windows
-build\Debug\EventSystem.exe --producer [pipe_name]
-build\Debug\EventSystem.exe --consumer [pipe_name]
+build\Debug\EventSystem.exe --producer [pipe_name] [--transport pipe]
+build\Debug\EventSystem.exe --consumer [pipe_name] [--transport pipe]
 
 # Linux
-./build/EventSystem --producer [pipe_name]
-./build/EventSystem --consumer [pipe_name]
+./build/EventSystem --producer [pipe_name] [--transport pipe]
+./build/EventSystem --consumer [pipe_name] [--transport pipe]
 ```
 
-`pipe_name` defaults to `event_pipe` if omitted. Both sides must use the same name.
+### Arguments
+
+| Argument | Default | Description |
+|---|---|---|
+| `--producer` / `--consumer` | — | Select operating mode (required) |
+| `pipe_name` | `event_pipe` | Name of the named pipe / FIFO. Both sides must use the same name. |
+| `--transport <type>` | `pipe` | IPC transport implementation. Currently only `pipe` is available. The factory pattern allows adding new transports (e.g. TCP) without changing business logic. |
 
 ## Tests
 
