@@ -1,0 +1,87 @@
+@startuml component_diagram_simple
+
+left to right direction
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam componentStyle rectangle
+skinparam nodesep 60
+skinparam ranksep 80
+skinparam defaultFontSize 18
+
+skinparam package {
+    BackgroundColor #f0f4ff
+    BorderColor #2c5aa0
+    FontStyle bold
+    FontSize 18
+}
+skinparam component {
+    BackgroundColor white
+    BorderColor #444444
+    FontSize 18
+}
+
+' ── Pfeil-Labels deutlich sichtbar ───────────────
+skinparam ArrowColor #333333
+skinparam ArrowFontColor #1a3c6e
+skinparam ArrowFontSize 18
+skinparam ArrowFontStyle bold
+
+' ── Notizen deutlich sichtbar ────────────────────
+skinparam note {
+    BackgroundColor #FFF3C4
+    BorderColor #C9A227
+    FontSize 16
+}
+
+package "Prozess 1\nProducer" {
+    component Producer
+    interface "IIPCFactory" as IFac1
+    component "PipeIPCFactory" as Factory1
+    component "EventSerializer" as Serializer1
+    interface "IIPCWriter" as IWriter1
+    component IPCWriter
+
+    note "schreibt alle 500 ms\n(blockierendes write())" as ProdNote
+
+    Factory1 .up.|> IFac1
+    IPCWriter .up.|> IWriter1
+    Producer ..> IFac1 : create()
+    Producer ..> Serializer1 : serialize()
+    Producer --> IWriter1 : write()
+    Producer .. ProdNote
+}
+
+package "OS IPC-Schicht\n(Kernel)" {
+    component Pipe [
+        Named Pipe (Windows)
+        FIFO (Linux)
+        ....
+        <b>Windows:</b> 4 KB, PIPE_TYPE_MESSAGE
+        <b>Linux:</b> 64 KB, Byte-Stream
+    ]
+}
+
+package "Prozess 2\nConsumer" {
+    component Consumer
+    interface "IIPCFactory" as IFac2
+    component "PipeIPCFactory" as Factory2
+    component "EventSerializer" as Serializer2
+    interface "IIPCReader" as IReader2
+    component IPCReader
+
+    note "liest via poll() / PeekNamedPipe()\n(~100 ms Timeout)" as ConsNote
+
+    Factory2 .up.|> IFac2
+    IPCReader .up.|> IReader2
+    IReader2 --> Consumer : JSON
+    Consumer ..> Serializer2 : deserialize()
+    Consumer ..> IFac2 : create()
+    Consumer .. ConsNote
+}
+
+IPCWriter --> Pipe : JSON
+Pipe --> IPCReader : \n\nread()
+
+' ── Kommentare ───────────────────────────────────
+
+@enduml

@@ -70,3 +70,6 @@ Testing/
 
 *.code-workspace
 *.vscode/
+
+# personal notes
+doc/latex/notes.md

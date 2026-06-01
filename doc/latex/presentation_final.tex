@@ -1,0 +1,352 @@
+\documentclass{beamer}
+
+% ── Theme ──────────────────────────────────────────────────────────────────
+\usetheme{Madrid}
+\usecolortheme{default}
+
+% ── Packages ───────────────────────────────────────────────────────────────
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[ngerman]{babel}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{tikz}
+\usepackage[normalem]{ulem}
+\usepackage{hyperref}
+\hypersetup{colorlinks=true, urlcolor=blue!60!black, linkcolor=black, citecolor=black}
+\setbeamertemplate{caption}[numbered]
+
+% ── Footer: zeige aktuelles Kapitel statt Kurztitel ─────────────────────
+\makeatletter
+\setbeamertemplate{footline}{%
+  \leavevmode%
+  \hbox{%
+    \begin{beamercolorbox}[wd=.333333\paperwidth,ht=2.25ex,dp=1ex,center]{author in head/foot}%
+      \usebeamerfont{author in head/foot}\insertshortauthor%
+    \end{beamercolorbox}%
+    \begin{beamercolorbox}[wd=.333333\paperwidth,ht=2.25ex,dp=1ex,center]{title in head/foot}%
+      \usebeamerfont{title in head/foot}\insertsection%
+    \end{beamercolorbox}%
+    \begin{beamercolorbox}[wd=.333333\paperwidth,ht=2.25ex,dp=1ex,right]{date in head/foot}%
+      \usebeamerfont{date in head/foot}\insertshortdate{}\hspace*{2em}%
+      \insertframenumber{} / \inserttotalframenumber\hspace*{2ex}%
+    \end{beamercolorbox}%
+  }%
+  \vskip0pt%
+}
+\makeatother
+
+% ── C++ Code-Style ─────────────────────────────────────────────────────────
+\lstdefinestyle{cpp}{
+    language=C++,
+    basicstyle=\ttfamily\footnotesize,
+    keywordstyle=\color{blue!80!black}\bfseries,
+    commentstyle=\color{gray}\itshape,
+    stringstyle=\color{red!70!black},
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{black!30},
+    backgroundcolor=\color{gray!5},
+    columns=fullflexible,
+    showstringspaces=false,
+    tabsize=2
+}
+\lstdefinestyle{plain}{
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{black!30},
+    backgroundcolor=\color{gray!5},
+    columns=fullflexible,
+    showstringspaces=false
+}
+
+% ── Titelseite ─────────────────────────────────────────────────────────────
+\title{Modulares Producer-Consumer-System mit austauschbarer IPC}
+\subtitle{Bewerbung bei SEW-EURODRIVE, Arbeitsprobe}
+\author{Jonas Dressner}
+%\institute{Bewerbung bei SEW-EURODRIVE}
+\date{02.06.2026}
+
+% ══════════════════════════════════════════════════════════════════════════
+\begin{document}
+
+% ── Titelfolie ──────────────────────────────────────────────────────────
+\begin{frame}
+    \titlepage
+\end{frame}
+
+% ── Inhaltsverzeichnis ──────────────────────────────────────────────────
+\begin{frame}{Inhalt}
+    \tableofcontents
+\end{frame}
+
+% ════════════════════════════════════════════════════════════════════════
+\section{Anforderungen}
+
+\begin{frame}[fragile]{Anforderungen}
+    \centering
+
+    % ── Hauptdiagramm ────────────────────────────────────────────────
+    \resizebox{0.82\textwidth}{!}{%
+    \begin{tikzpicture}[
+        proc/.style={rectangle, rounded corners=6pt,
+                     draw=#1!70, fill=#1!12,
+                     minimum width=2.8cm, minimum height=1.8cm,
+                     align=center, font=\large\bfseries},
+        ch/.style={rectangle, rounded corners=4pt,
+                   draw=gray!50, fill=gray!10, dashed,
+                   minimum width=2.4cm, minimum height=1.0cm,
+                   align=center, font=\normalsize},
+        evbox/.style={rectangle, rounded corners=3pt,
+                      draw=#1!60, fill=#1!10,
+                      minimum width=2.2cm, minimum height=0.65cm,
+                      align=center, font=\normalsize\bfseries, text=#1!80}
+    ]
+        \node[proc=blue]  (P) at (0,0)    {Producer\\\normalsize\mdseries Prozess 1};
+        \node[ch]         (C) at (5.5,0)  {IPC};
+        \node[proc=teal]  (K) at (11.0,0) {Consumer\\\normalsize\mdseries Prozess 2};
+
+        \draw[->, line width=1.5pt, blue!60]  (P.east) -- (C.west);
+        \draw[->, line width=1.5pt, teal!60]  (C.east) -- (K.west);
+
+        % Event-Paket: Felder links, Severity rechts
+        \node[font=\normalsize\bfseries] at (5.5, 5.6) {Event};
+        \draw[draw=black!30, rounded corners=5pt, dashed]
+            (2.8, 1.8) rectangle (8.2, 5.3);
+
+        % Trennlinie zwischen Feldern und Severity
+        \draw[gray!25] (5.55, 1.9) -- (5.55, 5.1);
+
+        % Felder als Bullet-Liste (links)
+        \node[font=\small, text=black!70, align=left] at (4.05, 3.3) {%
+            \textbullet\ \texttt{timestamp}\\[5pt]
+            \textbullet\ \texttt{component}\\[5pt]
+            \textbullet\ \texttt{severity}\\[5pt]
+            \textbullet\ \texttt{message}%
+        };
+
+        % Severity-Label (rechts)
+        \node[font=\small\bfseries, text=black!60] at (6.9, 4.85) {Severity};
+
+        % Severity-Boxen (rechts, gestapelt)
+        \node[evbox=red]    at (6.9, 4.25) {ERROR};
+        \node[evbox=orange] at (6.9, 3.45) {WARNING};
+        \node[evbox=gray] at (6.9, 2.65) {INFO};
+
+        % Symbolisches Event über der Pipe -- wird von links nach rechts ausgetauscht
+        \node[rectangle, rounded corners=2pt, draw=blue!55, fill=blue!12,
+              minimum width=1.15cm, minimum height=0.5cm, font=\scriptsize\bfseries,
+              text=blue!65] (evtok) at (4.6, 1.4) {Event};
+        \draw[->, line width=1.8pt, blue!55] (evtok.east) -- (7.5, 1.4);
+        \draw[gray!50, thin, dotted] (5.5, 1.15) -- (C.north);
+
+        % Consumer: kombinierte Annotation
+        \node[draw=gray!40, fill=gray!5, dashed, rounded corners=3pt,
+              font=\small\itshape, text=gray!70, align=center, inner sep=5pt]
+              (consinfo) at (11.0, 2.4)
+              {filtert \sout{INFO}\\[3pt] Statistiken alle 5\,s};
+        \draw[->, gray!40, thin] (consinfo.south) -- (K.north);
+    \end{tikzpicture}%
+    }
+
+    \vspace{0.4em}
+    % ── Stichpunkte vertikal ────────────────────────────────────────────
+    \begin{itemize}
+        \item \textbf{Producer und Consumer} laufen in getrennten Prozessen und kommunizieren via IPC
+        \item \textbf{IPC-Implementierung} muss austauschbar sein (Named Pipes, Sockets, Shared Memory, \ldots)
+        \item IPC mit \textbf{Systemfunktionen} (Windows oder Linux)
+    \end{itemize}
+\end{frame}
+
+% ════════════════════════════════════════════════════════════════════════
+\section{Design und Architektur}
+
+\begin{frame}[fragile]{Design: IPC via Named Pipe / FIFO}
+    \centering
+
+    \resizebox{0.82\textwidth}{!}{%
+    \begin{tikzpicture}[
+        proc/.style={rectangle, rounded corners=6pt,
+                     draw=#1!70, fill=#1!12,
+                     minimum width=2.8cm, minimum height=1.8cm,
+                     align=center, font=\large\bfseries},
+        ch/.style={rectangle, rounded corners=4pt,
+                   draw=gray!50, fill=gray!10, dashed,
+                   minimum width=2.4cm, minimum height=1.0cm,
+                   align=center, font=\normalsize},
+        evbox/.style={rectangle, rounded corners=3pt,
+                      draw=#1!60, fill=#1!10,
+                      minimum width=2.2cm, minimum height=0.65cm,
+                      align=center, font=\normalsize\bfseries, text=#1!80}
+    ]
+        \node[proc=blue]  (P) at (0,0)    {Producer\\\normalsize\mdseries Prozess 1};
+        \node[ch]         (C) at (5.5,0)  {Named Pipe\\FIFO};
+        \node[proc=teal]  (K) at (11.0,0) {Consumer\\\normalsize\mdseries Prozess 2};
+
+        \draw[->, line width=1.5pt, blue!60]  (P.east) -- (C.west);
+        \draw[->, line width=1.5pt, teal!60]  (C.east) -- (K.west);
+
+        \node[font=\normalsize\bfseries] at (5.5, 5.6) {Event};
+        \draw[draw=black!30, rounded corners=5pt, dashed]
+            (2.8, 1.8) rectangle (8.2, 5.3);
+        \draw[gray!25] (5.55, 1.9) -- (5.55, 5.1);
+
+        \node[font=\small, text=black!70, align=left] at (4.05, 3.3) {%
+            \textbullet\ \texttt{timestamp}\\[5pt]
+            \textbullet\ \texttt{component}\\[5pt]
+            \textbullet\ \texttt{severity}\\[5pt]
+            \textbullet\ \texttt{message}%
+        };
+
+        \node[font=\small\bfseries, text=black!60] at (6.9, 4.85) {Severity};
+        \node[evbox=red]    at (6.9, 4.25) {ERROR};
+        \node[evbox=orange] at (6.9, 3.45) {WARNING};
+        \node[evbox=gray] at (6.9, 2.65) {INFO};
+
+        \node[rectangle, rounded corners=2pt, draw=blue!55, fill=blue!12,
+              minimum width=1.15cm, minimum height=0.5cm, font=\scriptsize\bfseries,
+              text=blue!65] (evtok) at (4.6, 1.4) {Event};
+        \draw[->, line width=1.8pt, blue!55] (evtok.east) -- (7.5, 1.4);
+        \draw[gray!50, thin, dotted] (5.5, 1.15) -- (C.north);
+
+        \node[draw=gray!40, fill=gray!5, dashed, rounded corners=3pt,
+              font=\small\itshape, text=gray!70, align=center, inner sep=5pt]
+              (consinfo) at (11.0, 2.4)
+              {filtert \sout{INFO}\\[3pt] Statistiken alle 5\,s};
+        \draw[->, gray!40, thin] (consinfo.south) -- (K.north);
+    \end{tikzpicture}%
+    }
+
+    \vspace{0.4em}
+    \begin{itemize}
+        \item \textbf{Producer = Pipe-Server}, \textbf{Consumer = Pipe-Client}: Producer legt die Pipe an, Consumer verbindet sich
+        \item Windows: \textbf{Named Pipes} (\texttt{CreateNamedPipeA}, \texttt{WriteFile}/\texttt{ReadFile})
+        \item Linux: \textbf{FIFOs} (\texttt{mkfifo}, \texttt{open}, \texttt{poll})
+    \end{itemize}
+\end{frame}
+
+% ── Komponentendiagramm ──────────────────────────────────────────────────
+\begin{frame}{Komponentendiagramm}
+\begin{figure}
+    \centering
+    \includegraphics[width=\textwidth,height=0.62\textheight,keepaspectratio]{component_diagram_simple.png}
+    \caption{Komponentendiagramm: Zwei Prozesse, verbunden über die OS-IPC-Schicht.}
+\end{figure}
+
+\vfill
+\begin{itemize}
+    \item \textbf{Synchrone IPC}: blockierendes \texttt{write()}, Consumer liest gepuffert mit \texttt{poll()}/Timeout
+    \item \textbf{Symmetrische Architektur}: gleiches Binary für beide Prozesse, Rolle via CLI-Argument (\texttt{--producer} / \texttt{--consumer})
+\end{itemize}
+\vspace{0.5em}
+\end{frame}
+
+% ── Architekturdiagramm ──────────────────────────────────────────────────
+\begin{frame}{Architekturdiagramm}
+\begin{figure}
+    \centering
+    \includegraphics[width=\textwidth]{architecture_diagram.png}
+    \caption{Schichten, Interfaces und Abhängigkeiten.}
+\end{figure}
+\end{frame}
+
+% ════════════════════════════════════════════════════════════════════════
+\section{Zusammenfassung}
+
+\begin{frame}{Zusammenfassung: Design- \& Architekturentscheidungen}
+\begin{columns}[T]
+    \column{0.48\textwidth}
+    \textbf{Architektur}
+    \begin{itemize}\setlength{\itemsep}{0.3em}
+        \item \textbf{Abstract Factory}: Transport austauschbar (\texttt{IIPCFactory})
+        \item \textbf{Interface Segregation}: möglichst schlanke Interfaces
+        \item \textbf{Dependency Injection} im Konstruktor $\rightarrow$ testbar mit Fakes
+        \item \textbf{Symmetrisches Binary}: Rolle via CLI-Flag
+    \end{itemize}
+
+    \column{0.48\textwidth}
+    \textbf{Design}
+    \begin{itemize}\setlength{\itemsep}{0.3em}
+        \item \textbf{Producer = Pipe-Server}, \textbf{Consumer = Pipe-Client}
+        \item \textbf{Synchrone IPC}: blockierendes \texttt{write()}, gepufferte \texttt{poll()}/\texttt{PeekNamedPipe}
+        \item \textbf{Robustheit}: typisierte \texttt{PipeDisconnectedException} + Reconnect-Logik
+        \item \textbf{C++17}: RAII, Smart Pointer, \texttt{std::atomic}, \texttt{constexpr}
+    \end{itemize}
+\end{columns}
+\end{frame}
+
+% ── Abschluss ────────────────────────────────────────────────────────────
+\begin{frame}
+    \centering
+    \vspace{2em}
+    {\Huge Vielen Dank!}\\[1.5em]
+    {\large Fragen?}\\[2em]
+    \small Source Code \& Dokumentation:\\[0.3em]
+    \href{https://github.com/JonasDressner/event_system}{\texttt{github.com/JonasDressner/event\_system}}
+\end{frame}
+
+% ════════════════════════════════════════════════════════════════════════
+% Anhang -- nicht im Inhaltsverzeichnis, Foliennummer wird zurückgesetzt
+% ════════════════════════════════════════════════════════════════════════
+\appendix
+
+\section*{Anhang}
+
+%\begin{frame}{Anhang}
+%    \centering
+%    \vspace{1em}
+%    {\large Vollständiges Klassendiagramm}
+%\end{frame}
+
+% ── Vollständiges Klassendiagramm ────────────────────────────────────────
+\begin{frame}{Vollständiges Klassendiagramm}
+\begin{figure}
+    \centering
+    \includegraphics[width=\textwidth,height=0.72\textheight,keepaspectratio]{class_diagram.png}
+    \caption{Vollständiges Klassendiagramm: Alle Klassen, Member und Beziehungen.}
+\end{figure}
+\end{frame}
+
+\begin{frame}[fragile]{IPC-Abstraktion: Interface und Plattform-Implementierung}
+\begin{columns}[T]
+    \column{0.54\textwidth}
+    \textbf{Interface}
+\begin{lstlisting}[style=cpp]
+struct IIPCFactory {
+  virtual ~IIPCFactory() = default;
+  virtual unique_ptr<IIPCWriter>
+    createWriter(string name) = 0;
+  virtual unique_ptr<IIPCReader>
+    createReader(string name) = 0;
+};
+
+// main.cpp
+if (transport == "pipe")
+  return make_unique<PipeIPCFactory>();
+// transport == "tcp"  --> erweiterbar
+\end{lstlisting}
+
+    \column{0.46\textwidth}
+    \textbf{Plattform-Implementierung}\\[0.3em]
+    \textit{Windows (Named Pipes):}
+    \begin{itemize}\small
+        \item \texttt{CreateNamedPipeA}
+        \item \texttt{ConnectNamedPipe}
+        \item \texttt{WriteFile} / \texttt{ReadFile}
+        \item \texttt{PeekNamedPipe} (Timeout)
+    \end{itemize}
+    \vspace{0.4em}
+    \textit{Linux (FIFOs):}
+    \begin{itemize}\small
+        \item \texttt{mkfifo}
+        \item \texttt{open(O\_WRONLY)}
+        \item \texttt{open(O\_RDONLY|O\_NONBLOCK)}
+        \item \texttt{poll()} (Timeout)
+    \end{itemize}
+\end{columns}
+\end{frame}
+
+\end{document}

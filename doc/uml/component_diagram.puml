@@ -1,115 +1,67 @@
 @startuml component_diagram
 
-top to bottom direction
-skinparam componentStyle rectangle
+left to right direction
 skinparam shadowing false
 skinparam roundcorner 8
+skinparam componentStyle rectangle
 
+skinparam node {
+    BackgroundColor #f0f4ff
+    BorderColor #2c5aa0
+    FontStyle bold
+    FontSize 13
+}
 skinparam component {
     BackgroundColor white
     BorderColor #444444
-    ArrowColor #333333
-}
-skinparam package {
-    BackgroundColor #fafafa
-    BorderColor #aaaaaa
-    FontStyle bold
+    FontSize 12
 }
 skinparam interface {
     BackgroundColor #e8f4fb
     BorderColor #2980b9
 }
-skinparam nodesep 50
-skinparam ranksep 40
+skinparam nodesep 35
+skinparam ranksep 65
 
-' ── Entry Point ──────────────────────────────────
-package "Entry Point" {
-    component "main.cpp" as Main
-    note right of Main
-        Argumente:
-        - -producer | - -consumer
-        - -transport pipe  (Standard)
-        [pipe_name]  (optional)
-    end note
+' ── Schnittstellen (Lollipop) ────────────────────
+interface "IIPCWriter" as IW
+interface "IIPCReader" as IR
+
+' ── Prozess 1: Producer ──────────────────────────
+node "Prozess 1\n--producer" as P1 {
+    component "Producer" as Prod
+    component "EventSerializer" as Ser1
+    component "PipeIPCFactory" as Fac1
+    Prod ..> Ser1 : serialize
+    Prod ..> Fac1 : create
 }
 
-' ── Factory Layer ────────────────────────────────
-package "Factory Layer" {
-    interface "IIPCFactory" as IFactory
-    component "PipeIPCFactory" as PipeFactory
-    PipeFactory -up-> IFactory : implements
+' ── OS-IPC-Schicht ───────────────────────────────
+node "OS-IPC-Schicht\n(Kernel)" as IPC {
+    component "Named Pipe (Windows)\nFIFO (Linux)" as Pipe
 }
 
-' ── Business Logic ───────────────────────────────
-package "Business Logic" {
-    component "Producer\n(Pipe Server)" as Producer
-    component "Consumer\n(Pipe Client)" as Consumer
-
-    note right of Producer
-        cComponents / cSeverities / cMessages
-        als static constexpr arrays
-    end note
-
-    note right of Consumer
-        Statistics { warningCount,
-          errorCount, componentSeverityCount }
-        Statusausgabe alle 5 s
-    end note
+' ── Prozess 2: Consumer ──────────────────────────
+node "Prozess 2\n--consumer" as P2 {
+    component "Consumer" as Cons
+    component "EventSerializer" as Ser2
+    component "PipeIPCFactory" as Fac2
+    Cons ..> Ser2 : deserialize
+    Cons ..> Fac2 : create
 }
 
-' ── IPC Abstraction ──────────────────────────────
-package "IPC Abstraction" {
-    interface "IIPCWriter" as IWriter
-    interface "IIPCReader" as IReader
-}
+' ── Datenfluss über Schnittstellen ───────────────
+Prod --> IW
+IW   --> Pipe
+Pipe --> IR
+IR   --> Cons
 
-' ── Serialization ────────────────────────────────
-package "Serialization" {
-    interface "IEventSerializer" as ISerializer
-    component "EventSerializer\n(hand-rolled JSON)" as Serializer
-    Serializer -up-> ISerializer : implements
-}
-
-' ── Domain ───────────────────────────────────────
-package "Domain" {
-    component "Event\n{ timestamp, component,\n  severity, message }" as EventModel
-    component "Severity\n(INFO / WARNING / ERROR)" as Severity
-    EventModel --> Severity
-}
-
-' ── Platform IPC ─────────────────────────────────
-package "Platform IPC Implementation" {
-    component "IPCWriter\nWindows: CreateNamedPipeA\nLinux:   mkfifo + open(O_WRONLY)" as IPCWriter
-    component "IPCReader\nWindows: CreateFileA\nLinux:   open(O_RDONLY | O_NONBLOCK)" as IPCReader
-    component "PipeDisconnectedException" as PipeEx
-
-    IPCWriter -up-> IWriter : implements
-    IPCReader -up-> IReader : implements
-    IPCReader ..> PipeEx    : <<throws>>
-}
-
-' ── Relationships ────────────────────────────────
-
-' main selects factory and wires everything
-Main     -down-> IFactory       : createFactory(transport)
-Main     -down-> Producer       : runProducer(name, factory)
-Main     -down-> Consumer       : runConsumer(name, factory)
-
-' factory creates IPC objects
-IFactory -down-> IWriter        : createWriter()
-IFactory -down-> IReader        : createReader()
-PipeFactory ..> IPCWriter       : <<creates>>
-PipeFactory ..> IPCReader       : <<creates>>
-
-' Producer uses IIPCWriter + IEventSerializer
-Producer -down-> IWriter        : write(json)
-Producer -down-> ISerializer    : serialize(Event)
-Producer ..> EventModel         : generates
-
-' Consumer uses IIPCReader + IEventSerializer
-Consumer -down-> IReader        : read(json)
-Consumer -down-> ISerializer    : deserialize(json)
-Consumer ..> EventModel         : processes
-Consumer ..> PipeEx             : catches
+' ── Notizen ──────────────────────────────────────
+note bottom of P1 : schreibt alle 500 ms
+note bottom of IPC
+    Windows: 4 KB, PIPE_TYPE_MESSAGE
+    Linux: 64 KB, Byte-Stream
+end note
+note bottom of P2 : liest alle ~150 ms (poll, 100 ms Timeout)
 
 @enduml
